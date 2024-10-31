@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>عكس ألوان الصور وتنزيلها كملف مضغوط</title>
+    <style>
+        /* تنسيق الخطوط والألوان */
+        body {
+            font-family: 'Cairo', sans-serif;
+            text-align: center;
+            background: linear-gradient(135deg, #4e54c8, #8f94fb);
+            color: #fff;
+            padding: 20px;
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 20px;
+        }
+
+        /* تنسيق مدخل الملفات */
+        input[type="file"] {
+            padding: 10px;
+            margin-top: 20px;
+            background: #fff;
+            color: #333;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: background 0.3s ease;
+        }
+
+        input[type="file"]:hover {
+            background: #ddd;
+        }
+
+        /* تنسيق الزر */
+        button {
+            margin-top: 20px;
+            padding: 12px 24px;
+            font-size: 1.1rem;
+            background-color: #ff7675;
+            color: #fff;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s ease, transform 0.3s ease;
+            box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.2);
+        }
+
+        button:hover {
+            background-color: #d63031;
+            transform: scale(1.05);
+        }
+
+        /* إخفاء عنصر الـ canvas */
+        canvas {
+            display: none;
+        }
+
+        /* تنسيق الرسالة */
+        .message {
+            font-size: 1rem;
+            margin-top: 20px;
+            color: #ffdbac;
+        }
+    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <h1>عكس ألوان الصور وتنزيلها كملف مضغوط</h1>
+    <input type="file" id="fileInput" multiple accept="image/*">
+    <button onclick="invertAndDownload()">عكس الألوان وتنزيل الصور</button>
+    <canvas id="canvas"></canvas>
+    <p class="message">يرجى اختيار الصور لعكس ألوانها وتنزيلها كملف مضغوط</p>
+
+    <!-- إضافة مكتبة JSZip -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+    <script>
+        function invertColor(ctx, width, height) {
+            const imageData = ctx.getImageData(0, 0, width, height);
+            const data = imageData.data;
+            for (let i = 0; i < data.length; i += 4) {
+                data[i] = 255 - data[i];       // Red
+                data[i + 1] = 255 - data[i + 1]; // Green
+                data[i + 2] = 255 - data[i + 2]; // Blue
+            }
+            ctx.putImageData(imageData, 0, 0);
+        }
+
+        async function invertAndDownload() {
+            const files = document.getElementById("fileInput").files;
+            if (files.length === 0) {
+                alert("يرجى اختيار صور أولاً!");
+                return;
+            }
+
+            const zip = new JSZip();
+            const canvas = document.getElementById("canvas");
+            const ctx = canvas.getContext("2d");
+
+            for (const file of files) {
+                const img = new Image();
+                img.src = URL.createObjectURL(file);
+
+                await new Promise((resolve) => {
+                    img.onload = () => {
+                        canvas.width = img.width;
+                        canvas.height = img.height;
+                        ctx.drawImage(img, 0, 0);
+                        invertColor(ctx, img.width, img.height);
+
+                        canvas.toBlob((blob) => {
+                            zip.file(`inverted_${file.name}`, blob);
+                            resolve();
+                        }, "image/png");
+                    };
+                });
+            }
+
+            zip.generateAsync({ type: "blob" }).then((content) => {
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(content);
+                link.download = "inverted_images.zip";
+                link.click();
+            });
+        }
+    </script>
+</body>
+</html>
