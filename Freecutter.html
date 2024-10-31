@@ -1,0 +1,430 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>أداة قص الصور بالشكل الحر</title>
+    <style>
+    body {
+        font-family: Arial, sans-serif;
+        text-align: center;
+        direction: rtl;
+        background: linear-gradient(to bottom right, #f0f2f5, #cfe0e8);
+        color: #333;
+        margin: 0;
+        padding: 0;
+    }
+
+    h1 {
+        color: #005f73;
+        font-size: 2em;
+        margin: 20px 0;
+        padding: 10px;
+        background-color: #e0fbfc;
+        border-radius: 8px;
+        display: inline-block;
+        box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    #modeToggle, #downloadAllButton, #downloadPDFButton {
+        background-color: #008cba;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        font-size: 16px;
+        margin: 10px;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.3s ease;
+        box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+    }
+
+    #modeToggle:hover, #downloadAllButton:hover, #downloadPDFButton:hover {
+        background-color: #005f73;
+    }
+
+    input[type="file"] {
+        padding: 10px;
+        font-size: 16px;
+        margin: 20px;
+        border: 2px solid #008cba;
+        border-radius: 5px;
+        background-color: white;
+        cursor: pointer;
+        transition: border-color 0.3s ease;
+    }
+
+    input[type="file"]:hover {
+        border-color: #005f73;
+    }
+
+    .image-container {
+        position: relative;
+        display: inline-block;
+        margin: 20px;
+        background-color: white;
+        padding: 10px;
+        border-radius: 8px;
+        box-shadow: 0px 4px 8px rgba(0, 0, 0, 0.2);
+        transition: transform 0.3s ease;
+    }
+
+    .image-container:hover {
+        transform: scale(1.05);
+    }
+
+    .image-canvas {
+        border: 2px dashed #008cba;
+        cursor: crosshair;
+        position: absolute;
+        top: 0;
+        left: 0;
+    }
+
+    .canvas-container {
+        position: relative;
+        display: inline-block;
+        border: 2px solid #333;
+        border-radius: 5px;
+        overflow: hidden;
+    }
+
+    button {
+        font-family: inherit;
+    }
+
+    .image-container button {
+        background-color: #e63946;
+        color: white;
+        padding: 8px 16px;
+        font-size: 14px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        margin-top: 10px;
+        transition: background-color 0.3s ease;
+    }
+
+    .image-container button:hover {
+        background-color: #d62828;
+    }
+</style>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.7.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+</head>
+<body>
+    <h1>أداة قص الصور بالشكل الحر</h1>
+    <button id="modeToggle">تبديل طريقة القص</button>
+    <input type="file" id="fileInput" accept="image/png, image/jpeg, image/jpg" multiple>
+    <div id="imageList"></div>
+    <br>
+    <button id="downloadAllButton">تنزيل جميع الصور (ZIP)</button>
+    <button id="downloadPDFButton">تنزيل ملف PDF</button>
+    <script>
+        const fileInput = document.getElementById('fileInput');
+        const imageList = document.getElementById('imageList');
+        const downloadAllButton = document.getElementById('downloadAllButton');
+        const downloadPDFButton = document.getElementById('downloadPDFButton');
+        const modeToggle = document.getElementById('modeToggle');
+        let imageContainers = [];
+        let currentMode = 'freehand'; // Modes: 'freehand' or 'rectangle'
+        let drawing = false;
+
+        fileInput.addEventListener('change', handleFiles);
+        downloadAllButton.addEventListener('click', downloadAllImages);
+        downloadPDFButton.addEventListener('click', downloadPDF);
+        modeToggle.addEventListener('click', toggleMode);
+
+        function toggleMode() {
+            currentMode = currentMode === 'freehand' ? 'rectangle' : 'freehand';
+            modeToggle.textContent = currentMode === 'freehand' ? 'تبديل إلى طريقة القص بالمستطيل' : 'تبديل إلى طريقة القص الحر';
+        }
+
+        function handleFiles(event) {
+            const files = event.target.files;
+
+            Array.from(files).forEach(file => {
+                if (file.type === 'image/png' || file.type === 'image/jpeg') {
+                    const img = new Image();
+                    img.src = URL.createObjectURL(file);
+                    img.onload = () => {
+                        const container = createImageCanvas(img, file.name);
+                        imageContainers.push(container);
+                    };
+                }
+            });
+        }
+
+        function createImageCanvas(image, fileName) {
+            const container = document.createElement('div');
+            container.classList.add('image-container');
+
+            const canvasContainer = document.createElement('div');
+            canvasContainer.classList.add('canvas-container');
+
+            const imageCanvas = document.createElement('canvas');
+            imageCanvas.width = image.width;
+            imageCanvas.height = image.height;
+            const imageCtx = imageCanvas.getContext('2d');
+            imageCtx.drawImage(image, 0, 0);
+
+            const canvas = document.createElement('canvas');
+            canvas.width = image.width;
+            canvas.height = image.height;
+            canvas.classList.add('image-canvas');
+            const ctx = canvas.getContext('2d');
+
+            const resetButton = document.createElement('button');
+            resetButton.textContent = 'إعادة التعيين';
+            resetButton.addEventListener('click', () => resetCanvas(ctx, canvas, imageCanvas, image));
+
+            canvas.addEventListener('mousedown', (event) => startDrawing(event, canvas, ctx));
+            canvas.addEventListener('mousemove', (event) => draw(event, canvas, ctx));
+            canvas.addEventListener('mouseup', stopDrawing);
+
+            container.appendChild(canvasContainer);
+            canvasContainer.appendChild(imageCanvas);
+            canvasContainer.appendChild(canvas);
+            container.appendChild(resetButton);
+            container.fileName = fileName;
+            container.croppedDataUrl = null;
+            container.image = image;
+            container.canvas = canvas;
+            container.imageCanvas = imageCanvas;
+            container.rectPoints = null; // for rectangle mode
+
+            imageList.appendChild(container);
+
+            return container;
+        }
+
+        function startDrawing(event, canvas, ctx) {
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+
+            if (currentMode === 'freehand') {
+                if (!canvas.points) {
+                    canvas.points = [];
+                }
+                canvas.points.push({ x, y });
+                drawPoints(canvas.points, ctx);
+            } else if (currentMode === 'rectangle') {
+                if (!canvas.rectPoints) {
+                    canvas.rectPoints = [
+                        { x, y }, // Top-left
+                        { x: x + 100, y }, // Top-right
+                        { x: x + 100, y: y + 100 }, // Bottom-right
+                        { x, y: y + 100 } // Bottom-left
+                    ];
+                } else {
+                    activePoint = canvas.rectPoints.find(point => isNearPoint(x, y, point));
+                }
+                drawRectangle(canvas.rectPoints, ctx);
+            }
+
+            drawing = true;
+        }
+
+        function draw(event, canvas, ctx) {
+            if (!drawing || (currentMode === 'rectangle' && !activePoint)) return;
+
+            const rect = canvas.getBoundingClientRect();
+            const x = event.clientX - rect.left;
+            const y = event.clientY - rect.top;
+
+            if (currentMode === 'freehand') {
+                canvas.points.push({ x, y });
+                drawPoints(canvas.points, ctx);
+            } else if (currentMode === 'rectangle' && activePoint) {
+                activePoint.x = x;
+                activePoint.y = y;
+                drawRectangle(canvas.rectPoints, ctx);
+            }
+        }
+
+        function stopDrawing() {
+            drawing = false;
+            activePoint = null;
+        }
+
+        function drawPoints(points, ctx) {
+            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+            ctx.fillStyle = 'red';
+            points.forEach(point => {
+                ctx.beginPath();
+                ctx.arc(point.x, point.y, 5, 0, Math.PI * 2);
+                ctx.fill();
+            });
+            if (points.length > 1) {
+                ctx.beginPath();
+                ctx.moveTo(points[0].x, points[0].y);
+                for (let i = 1; i < points.length; i++) {
+                    ctx.lineTo(points[i].x, points[i].y);
+                }
+                ctx.closePath();
+                ctx.strokeStyle = 'red';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+            }
+        }
+
+        function drawRectangle(rectPoints, ctx) {
+            ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
+
+            // Draw rectangle
+            ctx.strokeStyle = 'red';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(rectPoints[0].x, rectPoints[0].y);
+            rectPoints.forEach((point, i) => {
+                const nextPoint = rectPoints[(i + 1) % rectPoints.length];
+                ctx.lineTo(nextPoint.x, nextPoint.y);
+            });
+            ctx.closePath();
+            ctx.stroke();
+
+            // Draw points
+            rectPoints.forEach(point => {
+                ctx.beginPath();
+                ctx.arc(point.x, point.y, 10, 0, Math.PI * 2); // Increased size to 10 pixels
+                ctx.fillStyle = 'red';
+                ctx.fill();
+            });
+        }
+
+        function isNearPoint(x, y, point) {
+            const dx = x - point.x;
+            const dy = y - point.y;
+            return dx * dx + dy * dy <= 100; // 10 pixels radius
+        }
+
+        function cropImage(container) {
+            const { imageCanvas, canvas } = container;
+
+            if (currentMode === 'freehand') {
+                if (!canvas.points || canvas.points.length < 3) {
+                    alert('يرجى تحديد ثلاث نقاط على الأقل.');
+                    return null;
+                }
+                return cropFreehand(container);
+            } else if (currentMode === 'rectangle') {
+                return cropRectangle(container);
+            }
+        }
+
+        function cropFreehand(container) {
+            const { imageCanvas, canvas } = container;
+            const croppedCanvas = document.createElement('canvas');
+            const croppedCtx = croppedCanvas.getContext('2d');
+
+            const minX = Math.min(...canvas.points.map(p => p.x));
+            const minY = Math.min(...canvas.points.map(p => p.y));
+            const maxX = Math.max(...canvas.points.map(p => p.x));
+            const maxY = Math.max(...canvas.points.map(p => p.y));
+
+            const width = maxX - minX;
+            const height = maxY - minY;
+
+            croppedCanvas.width = width;
+            croppedCanvas.height = height;
+
+            // Clip the area defined by the points
+            croppedCtx.beginPath();
+            croppedCtx.moveTo(canvas.points[0].x - minX, canvas.points[0].y - minY);
+            for (let i = 1; i < canvas.points.length; i++) {
+                croppedCtx.lineTo(canvas.points[i].x - minX, canvas.points[i].y - minY);
+            }
+            croppedCtx.closePath();
+            croppedCtx.clip();
+
+            // Fill with transparent color
+            croppedCtx.clearRect(0, 0, croppedCanvas.width, croppedCanvas.height);
+
+            // Draw the clipped area onto the new canvas
+            croppedCtx.drawImage(imageCanvas, minX, minY, width, height, 0, 0, width, height);
+
+            return croppedCanvas.toDataURL('image/png');
+        }
+
+        function cropRectangle(container) {
+            const { imageCanvas, canvas } = container;
+            const croppedCanvas = document.createElement('canvas');
+            const croppedCtx = croppedCanvas.getContext('2d');
+
+            const minX = Math.min(...canvas.rectPoints.map(p => p.x));
+            const minY = Math.min(...canvas.rectPoints.map(p => p.y));
+            const maxX = Math.max(...canvas.rectPoints.map(p => p.x));
+            const maxY = Math.max(...canvas.rectPoints.map(p => p.y));
+
+            const width = maxX - minX;
+            const height = maxY - minY;
+
+            croppedCanvas.width = width;
+            croppedCanvas.height = height;
+
+            croppedCtx.drawImage(imageCanvas, minX, minY, width, height, 0, 0, width, height);
+
+            return croppedCanvas.toDataURL('image/png');
+        }
+
+        function resetCanvas(ctx, canvas, imageCanvas, image) {
+            canvas.points = [];
+            canvas.rectPoints = null;
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            const imageCtx = imageCanvas.getContext('2d');
+            imageCtx.clearRect(0, 0, imageCanvas.width, imageCanvas.height);
+            imageCtx.drawImage(image, 0, 0);
+        }
+
+       function downloadAllImages() {
+    const zip = new JSZip();
+    let imageCounter = 1; // بداية الترقيم من 1
+
+    imageContainers.forEach(container => {
+        const croppedDataUrl = cropImage(container);
+        if (croppedDataUrl) {
+            const base64Data = croppedDataUrl.split(',')[1];
+            const fileExtension = container.fileName.split('.').pop(); // استخراج الصيغة الأصلية للملف
+            zip.file(`cropped(${imageCounter}).${fileExtension}`, base64Data, { base64: true });
+            imageCounter++; // زيادة الترقيم مع كل صورة
+        }
+    });
+
+    zip.generateAsync({ type: 'blob' }).then(content => {
+        saveAs(content, 'cropped-images.zip');
+    });
+}
+
+        async function downloadPDF() {
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF();
+
+            for (let i = 0; i < imageContainers.length; i++) {
+                const container = imageContainers[i];
+                const croppedDataUrl = cropImage(container);
+                if (croppedDataUrl) {
+                    const imgProps = pdf.getImageProperties(croppedDataUrl);
+                    const pdfWidth = pdf.internal.pageSize.getWidth();
+                    const pdfHeight = pdf.internal.pageSize.getHeight();
+
+                    const imgWidth = pdfWidth * 0.9; // 90% of PDF page width
+                    const imgHeight = (imgProps.height * imgWidth) / imgProps.width;
+
+                    const x = (pdfWidth - imgWidth) / 2;
+                    const y = (pdfHeight - imgHeight) / 2;
+
+                    pdf.addImage(croppedDataUrl, 'PNG', x, y, imgWidth, imgHeight);
+
+                    if (i < imageContainers.length - 1) {
+                        pdf.addPage();
+                    }
+                }
+            }
+
+            pdf.save('cropped-images.pdf');
+        }
+    </script>
+</body>
+</html>
