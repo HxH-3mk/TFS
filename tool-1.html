@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>حساب ساعات الغياب المسموحة</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background-color: #ffffff; /* خلفية بيضاء بالكامل */
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+    }
+    .container {
+        background-color: #ffffff;
+        border-radius: 8px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+        padding: 20px;
+        max-width: 400px;
+        width: 100%;
+        text-align: center;
+    }
+    h1 {
+        font-size: 24px;
+        margin-bottom: 20px;
+        color: #333;
+    }
+    input[type="number"] {
+        padding: 10px;
+        font-size: 16px;
+        width: 100%;
+        margin-bottom: 15px;
+        border: 1px solid #ddd;
+        border-radius: 4px;
+    }
+    button {
+        background-color: #007bff;
+        color: #ffffff;
+        padding: 10px;
+        font-size: 16px;
+        width: 100%;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    button:hover {
+        background-color: #0056b3;
+    }
+    .result {
+        margin-top: 20px;
+        font-size: 18px;
+        color: #333;
+    }
+    .notes {
+        color: gray;
+        font-size: 14px;
+        margin-top: 10px;
+        text-align: right;
+    }
+</style>
+</head>
+<body>
+
+<div class="container">
+    <h1>حساب ساعات الغياب المسموحة</h1>
+    <label for="weekly-hours">أدخل عدد الساعات في الأسبوع:</label>
+    <input type="number" id="weekly-hours" placeholder="مثال: 6">
+    <button onclick="calculateAbsence()">احسب</button>
+    <div id="result" class="result"></div>
+</div>
+
+<script>
+function calculateAbsence() {
+    const weeklyHours = parseFloat(document.getElementById('weekly-hours').value);
+    const termWeeks = 15;
+    const absencePercentage = 0.15;
+    
+    if (!isNaN(weeklyHours) && weeklyHours > 0) {
+        // حساب إجمالي ساعات المادة في الترم
+        const totalHours = weeklyHours * termWeeks;
+        
+        // حساب عدد الساعات المسموح بها للغياب
+        const allowedAbsenceHours = Math.floor(totalHours * absencePercentage);
+        
+        // حساب تأثير ساعة واحدة من الغياب برقمين عشريين
+        const hourEffect = ((1 / totalHours) * 100).toFixed(2);
+        
+        // عرض النتائج
+        document.getElementById('result').innerHTML = `
+            <p>عدد الساعات المسموح بها للغياب: <strong>${allowedAbsenceHours}</strong> ساعة</p>
+            <p>تأثير كل ساعة غياب: <strong>${hourEffect}%</strong> من إجمالي الساعات</p>
+            <div class="notes">
+                <p>1- كل مادة في الترم يسمح الغياب فيها بنسبة 15% من عدد الساعات في الترم كاملاً.</p>
+                <p>2- اللاب والثيوري تحسب ساعاتهم في الأسبوع معًا في نسبة واحدة من 15%.</p>
+                <p>3- تم حذف الفواصل لأنها لا تمثل ساعة كاملة (بتلقم حرمان).</p>
+            </div>
+        `;
+    } else {
+        document.getElementById('result').innerHTML = "<p style='color: red;'>يرجى إدخال عدد صحيح للساعات في الأسبوع.</p>";
+    }
+}
+</script>
+
+</body>
+</html>
