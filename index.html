@@ -1,13 +1,64 @@
 <!DOCTYPE html>
 <html lang="ar">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>إعادة توجيه</title>
-    <!-- إعادة توجيه تلقائي بعد 0 ثانية إلى الملف الآخر -->
-    <meta http-equiv="refresh" content="0; URL='tool-1.html'">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>اختر الأداة</title>
+<style>
+    body {
+        font-family: Arial, sans-serif;
+        background-color: #f0f0f5;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+        margin: 0;
+    }
+    .container {
+        background-color: #ffffff;
+        border-radius: 12px;
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+        padding: 30px;
+        max-width: 400px;
+        text-align: center;
+    }
+    h1 {
+        font-size: 24px;
+        margin-bottom: 20px;
+        color: #333;
+    }
+    .button {
+        background-color: #007bff;
+        color: #ffffff;
+        padding: 15px;
+        font-size: 18px;
+        width: 100%;
+        border: none;
+        border-radius: 8px;
+        margin: 10px 0;
+        cursor: pointer;
+        text-decoration: none;
+        display: inline-block;
+        transition: background-color 0.3s ease;
+    }
+    .button:hover {
+        background-color: #0056b3;
+    }
+    .button.secondary {
+        background-color: #28a745;
+    }
+    .button.secondary:hover {
+        background-color: #1e7e34;
+    }
+</style>
 </head>
 <body>
-    <p>إذا لم يتم توجيهك تلقائيًا، <a href="tool-1.html">اضغط هنا للانتقال إلى الصفحة</a>.</p>
+
+<div class="container">
+    <h1>اختر الأداة</h1>
+    <a href="tool-1.html" class="button">أداة حساب ساعات الغياب</a>
+    <a href="invertcolortool.html" class="button secondary">أداة عكس الألوان</a>
+</div>
+
 </body>
 </html>
