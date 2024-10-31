@@ -7,7 +7,7 @@
 <style>
     body {
         font-family: Arial, sans-serif;
-        background-color: #ffffff;
+        background-color: #ffffff; /* خلفية بيضاء بالكامل */
         display: flex;
         justify-content: center;
         align-items: center;
@@ -19,8 +19,8 @@
         border-radius: 8px;
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         padding: 20px;
-        max-width: 90%; /* استخدام نسبة مئوية لضمان التناسب مع الشاشات الصغيرة */
-        width: 400px;
+        max-width: 400px;
+        width: 100%;
         text-align: center;
     }
     h1 {
@@ -55,12 +55,10 @@
         color: #333;
     }
     .notes {
-        color: #333;
-        font-size: 16px;
+        color: gray;
+        font-size: 14px;
         margin-top: 10px;
         text-align: right;
-        direction: rtl;
-        line-height: 1.8;
     }
 </style>
 </head>
@@ -81,10 +79,16 @@ function calculateAbsence() {
     const absencePercentage = 0.15;
     
     if (!isNaN(weeklyHours) && weeklyHours > 0) {
+        // حساب إجمالي ساعات المادة في الترم
         const totalHours = weeklyHours * termWeeks;
+        
+        // حساب عدد الساعات المسموح بها للغياب
         const allowedAbsenceHours = Math.floor(totalHours * absencePercentage);
+        
+        // حساب تأثير ساعة واحدة من الغياب برقمين عشريين
         const hourEffect = ((1 / totalHours) * 100).toFixed(2);
         
+        // عرض النتائج
         document.getElementById('result').innerHTML = `
             <p>عدد الساعات المسموح بها للغياب: <strong>${allowedAbsenceHours}</strong> ساعة</p>
             <p>تأثير كل ساعة غياب: <strong>${hourEffect}%</strong> من إجمالي الساعات</p>
