@@ -19,7 +19,7 @@
         border-radius: 8px;
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         padding: 20px;
-        max-width: 90%; /* استخدام نسبة مئوية لضمان التناسب مع الشاشات الصغيرة */
+        max-width: 90%;
         width: 400px;
         text-align: center;
     }
@@ -31,11 +31,11 @@
     input[type="number"] {
         padding: 10px;
         font-size: 16px;
-        width: calc(100% - 20px); /* اجعل العرض يأخذ كامل الحاوية مع مراعاة الحواف */
+        width: calc(100% - 20px);
         margin-bottom: 15px;
         border: 1px solid #ddd;
         border-radius: 4px;
-        box-sizing: border-box; /* التأكد من أن العرض يشمل الحواف */
+        box-sizing: border-box;
     }
     button {
         background-color: #007bff;
@@ -47,14 +47,6 @@
         border-radius: 4px;
         cursor: pointer;
     }
-    
-    .bold-text {
-    font-weight: bold;
-    color: #ffffff; /* لون النص */
-    margin-top: 20px; /* تباعد من الأعلى */
-    text-align: right; /* محاذاة النص لليمين */
-    }
-
     button:hover {
         background-color: #0056b3;
     }
@@ -65,11 +57,17 @@
     }
     .notes {
         color: #333;
-        font-size: 16px; /* تكبير حجم الخط */
+        font-size: 16px;
         margin-top: 10px;
         text-align: right;
-        direction: rtl; /* جعل النص من اليمين لليسار */
-        line-height: 1.8; /* تباعد بين الأسطر */
+        direction: rtl;
+        line-height: 1.8;
+    }
+    .notes .bold-text {
+        font-weight: bold;
+        color: #333;
+        margin-top: 20px;
+        text-align: right;
     }
 </style>
 </head>
@@ -88,12 +86,12 @@ function calculateAbsence() {
     const weeklyHours = parseFloat(document.getElementById('weekly-hours').value);
     const termWeeks = 16;
     const absencePercentage = 0.15;
-    
+
     if (!isNaN(weeklyHours) && weeklyHours > 0) {
         const totalHours = weeklyHours * termWeeks;
         const allowedAbsenceHours = Math.floor(totalHours * absencePercentage);
         const hourEffect = ((1 / totalHours) * 100).toFixed(9);
-        
+
         document.getElementById('result').innerHTML = `
             <p>عدد الساعات المسموح بها للغياب: <strong>${allowedAbsenceHours}</strong> ساعة</p>
             <p>تأثير كل ساعة غياب: <strong>${hourEffect}%</strong> من إجمالي الساعات</p>
@@ -102,8 +100,7 @@ function calculateAbsence() {
                 <p>2- اللاب والثيوري تحسب ساعاتهم في الأسبوع معًا في نسبة واحدة من 15%.</p>
                 <p>3- تم حذف الفواصل لأنها لا تمثل ساعة كاملة (بتلقم حرمان).</p>
                 <p>4- الترم الواحد يحسب ب 16 اسبوع وليس 15.</p>
-                <p class="bold-text">5- الجامعة تحسب الفواصل كاملة وتظربها بعدد ساعات غيابك بعدها تقرب لفاصلتين في النسبة النهائية.</p>
-
+                <p class="bold-text">5- الجامعة تحسب الفواصل كاملة وتضربها بعدد ساعات غيابك، ثم تقربها إلى فاصلتين في النسبة النهائية.</p>
             </div>
         `;
     } else {
