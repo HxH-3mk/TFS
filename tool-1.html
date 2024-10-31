@@ -78,7 +78,7 @@
 <script>
 function calculateAbsence() {
     const weeklyHours = parseFloat(document.getElementById('weekly-hours').value);
-    const termWeeks = 15;
+    const termWeeks = 16;
     const absencePercentage = 0.15;
     
     if (!isNaN(weeklyHours) && weeklyHours > 0) {
@@ -93,6 +93,7 @@ function calculateAbsence() {
                 <p>1- كل مادة في الترم يسمح الغياب فيها بنسبة 15% من عدد الساعات في الترم كاملاً.</p>
                 <p>2- اللاب والثيوري تحسب ساعاتهم في الأسبوع معًا في نسبة واحدة من 15%.</p>
                 <p>3- تم حذف الفواصل لأنها لا تمثل ساعة كاملة (بتلقم حرمان).</p>
+                <p>3- الترم الواحد يحسب ب 16 اسبوع وليس 15.</p>
             </div>
         `;
     } else {
