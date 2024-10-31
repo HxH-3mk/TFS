@@ -84,7 +84,7 @@ function calculateAbsence() {
     if (!isNaN(weeklyHours) && weeklyHours > 0) {
         const totalHours = weeklyHours * termWeeks;
         const allowedAbsenceHours = Math.floor(totalHours * absencePercentage);
-        const hourEffect = ((1 / totalHours) * 100).toFixed(6);
+        const hourEffect = ((1 / totalHours) * 100).toFixed(9);
         
         document.getElementById('result').innerHTML = `
             <p>عدد الساعات المسموح بها للغياب: <strong>${allowedAbsenceHours}</strong> ساعة</p>
@@ -93,7 +93,9 @@ function calculateAbsence() {
                 <p>1- كل مادة في الترم يسمح الغياب فيها بنسبة 15% من عدد الساعات في الترم كاملاً.</p>
                 <p>2- اللاب والثيوري تحسب ساعاتهم في الأسبوع معًا في نسبة واحدة من 15%.</p>
                 <p>3- تم حذف الفواصل لأنها لا تمثل ساعة كاملة (بتلقم حرمان).</p>
-                <p>3- الترم الواحد يحسب ب 16 اسبوع وليس 15.</p>
+                <p>4- الترم الواحد يحسب ب 16 اسبوع وليس 15.</p>
+                <p>5- الجامعة تحسب الفواصل كاملة وتظربها بعدد ساعات غيابك بعدها تقرب لفاصلتين في النسبة النهائية.</p>
+
             </div>
         `;
     } else {
