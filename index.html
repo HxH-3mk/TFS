@@ -15,7 +15,7 @@
         margin: 0;
     }
     .container {
-        background-color: #ffffff;
+        background-color: #333333;
         border-radius: 12px;
         box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
         padding: 30px;
@@ -25,17 +25,17 @@
     h1 {
         font-size: 24px;
         margin-bottom: 20px;
-        color: #333;
+        color: #ffffff;
     }
     .button {
         background-color: #007bff;
         color: #ffffff;
         padding: 15px;
         font-size: 18px;
-        width: 100%;
+        width: calc(100% - 40px); /* تقليل العرض لتجنب ملامسة الحواف */
+        margin: 10px 20px; /* إضافة هوامش للابتعاد عن الحواف */
         border: none;
         border-radius: 8px;
-        margin: 10px 0;
         cursor: pointer;
         text-decoration: none;
         display: inline-block;
@@ -50,6 +50,13 @@
     .button.secondary:hover {
         background-color: #1e7e34;
     }
+    /* نمط خاص لزر "أداة القص الحر" */
+    .button.cutter {
+        background-color: #ff9800;
+    }
+    .button.cutter:hover {
+        background-color: #e68a00;
+    }
 </style>
 </head>
 <body>
@@ -57,7 +64,7 @@
 <div class="container">
     <h1>اختر الأداة</h1>
     <a href="tool-1.html" class="button">أداة حساب ساعات الغياب</a>
-    <a href="Freecutter.html" class="button">أداة القص الحر</a>
+    <a href="Freecutter.html" class="button cutter">أداة القص الحر</a>
     <a href="invertcolortool.html" class="button secondary">أداة عكس الألوان</a>
 </div>
 
