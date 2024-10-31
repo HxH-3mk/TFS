@@ -84,7 +84,7 @@ function calculateAbsence() {
     if (!isNaN(weeklyHours) && weeklyHours > 0) {
         const totalHours = weeklyHours * termWeeks;
         const allowedAbsenceHours = Math.floor(totalHours * absencePercentage);
-        const hourEffect = ((1 / totalHours) * 100).toFixed(2);
+        const hourEffect = ((1 / totalHours) * 100).toFixed(6);
         
         document.getElementById('result').innerHTML = `
             <p>عدد الساعات المسموح بها للغياب: <strong>${allowedAbsenceHours}</strong> ساعة</p>
