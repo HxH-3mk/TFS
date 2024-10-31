@@ -6,7 +6,7 @@
 <title>اختر الأداة</title>
 <style>
     body {
-        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif; /* خط أكثر وضوحاً */
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
         background-color: #f0f0f5;
         display: flex;
         justify-content: center;
@@ -23,21 +23,21 @@
         text-align: center;
     }
     h1 {
-        font-size: 28px; /* تكبير حجم العنوان */
+        font-size: 28px;
         margin-bottom: 25px;
         color: #ffffff;
     }
     .button {
         background-color: #007bff;
         color: #ffffff;
-        padding: 18px; /* زيادة مساحة الأزرار */
-        font-size: 20px; /* تكبير الخط */
-        margin: 15px 0; /* توسيع الهوامش بين الأزرار */
+        padding: 18px;
+        font-size: 20px;
+        margin: 15px 0;
         border: none;
         border-radius: 8px;
         cursor: pointer;
         text-decoration: none;
-        display: block; /* جعل الأزرار تملأ العرض بالكامل */
+        display: block;
         transition: background-color 0.3s ease;
     }
     .button:hover {
@@ -56,6 +56,13 @@
     .button.cutter:hover {
         background-color: #e68a00;
     }
+    /* نمط خاص لزر "حاسبة الأسعار" */
+    .button.price-calculator {
+        background-color: #6f42c1;
+    }
+    .button.price-calculator:hover {
+        background-color: #5a35a3;
+    }
 </style>
 </head>
 <body>
@@ -65,6 +72,7 @@
     <a href="tool-1.html" class="button">أداة حساب ساعات الغياب</a>
     <a href="Freecutter.html" class="button cutter">أداة القص الحر</a>
     <a href="invertcolortool.html" class="button secondary">أداة عكس الألوان</a>
+    <a href="Copy-and-Print-Centers-Price-Calculator.html" class="button price-calculator">حاسبة أسعار مراكز النسخ والطباعة</a>
 </div>
 
 </body>
