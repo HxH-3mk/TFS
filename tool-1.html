@@ -19,8 +19,8 @@
         border-radius: 8px;
         box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
         padding: 20px;
-        max-width: 400px;
-        width: 100%;
+        max-width: 90%; /* استخدام نسبة مئوية لضمان التناسب مع الشاشات الصغيرة */
+        width: 400px;
         text-align: center;
     }
     h1 {
@@ -31,10 +31,11 @@
     input[type="number"] {
         padding: 10px;
         font-size: 16px;
-        width: 100%;
+        width: calc(100% - 20px); /* اجعل العرض يأخذ كامل الحاوية مع مراعاة الحواف */
         margin-bottom: 15px;
         border: 1px solid #ddd;
         border-radius: 4px;
+        box-sizing: border-box; /* التأكد من أن العرض يشمل الحواف */
     }
     button {
         background-color: #007bff;
@@ -81,16 +82,10 @@ function calculateAbsence() {
     const absencePercentage = 0.15;
     
     if (!isNaN(weeklyHours) && weeklyHours > 0) {
-        // حساب إجمالي ساعات المادة في الترم
         const totalHours = weeklyHours * termWeeks;
-        
-        // حساب عدد الساعات المسموح بها للغياب
         const allowedAbsenceHours = Math.floor(totalHours * absencePercentage);
-        
-        // حساب تأثير ساعة واحدة من الغياب برقمين عشريين
         const hourEffect = ((1 / totalHours) * 100).toFixed(2);
         
-        // عرض النتائج
         document.getElementById('result').innerHTML = `
             <p>عدد الساعات المسموح بها للغياب: <strong>${allowedAbsenceHours}</strong> ساعة</p>
             <p>تأثير كل ساعة غياب: <strong>${hourEffect}%</strong> من إجمالي الساعات</p>
