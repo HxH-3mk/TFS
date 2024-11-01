@@ -15,14 +15,13 @@
         align-items: center;
         height: 100vh;
         margin: 0;
-        overflow: hidden;
     }
     .container {
         background-color: #333333;
         border-radius: 16px;
         box-shadow: 0 6px 18px rgba(0, 0, 0, 0.3);
         padding: 40px;
-        max-width: 450px;
+        max-width: 90%;
         text-align: center;
         position: relative;
         transition: box-shadow 0.2s ease;
@@ -72,17 +71,19 @@
         box-shadow: 0 0 20px rgba(58, 150, 255, 0.6), 0 0 30px rgba(58, 150, 255, 0.4), 0 0 40px rgba(58, 150, 255, 0.3);
     }
 
-    /* Neon effect that follows the mouse */
-    body::after {
-        content: '';
-        position: absolute;
-        width: 200px;
-        height: 200px;
-        border-radius: 50%;
-        background: rgba(58, 150, 255, 0.4);
-        pointer-events: none;
-        transition: transform 0.1s ease;
-        z-index: -1;
+    /* Responsive design for smaller screens */
+    @media (max-width: 600px) {
+        .container {
+            padding: 20px;
+            max-width: 100%;
+        }
+        h1 {
+            font-size: 20px;
+        }
+        .button {
+            font-size: 16px;
+            padding: 12px;
+        }
     }
 </style>
 </head>
@@ -97,15 +98,6 @@
     <a href="invertcolortool.html" class="button secondary">أداة عكس الألوان</a>
     <a href="Copy-and-Print-Centers-Price-Calculator.html" class="button price-calculator">حاسبة أسعار مراكز النسخ والطباعة</a>
 </div>
-
-<script>
-    document.addEventListener('mousemove', function(e) {
-        const neonEffect = document.body.querySelector('body::after');
-        if (neonEffect) {
-            neonEffect.style.transform = `translate(${e.clientX - 100}px, ${e.clientY - 100}px)`;
-        }
-    });
-</script>
 
 </body>
 </html>
