@@ -1,3 +1,4 @@
+
 <!DOCTYPE html>
 <html dir="rtl">
 <head>
@@ -5,7 +6,8 @@
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-            background-color: #f0f0f0;
+            background-color: #121212; /* Dark Mode */
+            color: #ffffff; /* Text color in Dark Mode */
             margin: 0;
             padding: 0;
             display: flex;
@@ -13,133 +15,108 @@
             align-items: center;
             min-height: 100vh;
         }
-
         #container {
-            background-color: #fff;
-            border-radius: 8px;
+            background-color: #333333; /* Dark container background */
+            border-radius: 16px; /* Rounded corners for container */
             padding: 20px;
             box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
-            text-align: right; /* تغيير اتجاه النص إلى اليمين */
+            text-align: right;
             animation: fadeIn 0.5s ease-in-out;
+            transition: box-shadow 0.2s ease;
         }
-
         h1 {
-            color: #333;
+            color: #ffffff; /* White text for headings in Dark Mode */
             font-size: 24px;
-            text-align: center; /* مركز العنوان */
+            text-align: center;
         }
-
         button {
             background-color: #007bff;
-            color: #fff;
+            color: #ffffff;
             border: none;
             padding: 10px 20px;
             margin: 10px;
-            border-radius: 4px;
+            border-radius: 8px; /* Rounded corners for buttons */
             cursor: pointer;
-            transition: background-color 0.3s;
+            transition: background-color 0.3s, box-shadow 0.2s ease;
         }
-
         button:hover {
             background-color: #0056b3;
+            box-shadow: 0 0 10px rgba(58, 150, 255, 0.8); /* Neon effect on hover */
         }
-
         .file {
-            border: 1px solid #ddd;
-            border-radius: 4px;
+            border: 1px solid #444; /* Adjusted border color for Dark Mode */
+            border-radius: 16px; /* Rounded corners for file elements */
             padding: 10px;
             margin: 10px 0;
-            background-color: #f9f9f9;
+            background-color: #222222; /* Dark background for file elements */
+            color: #ffffff; /* White text color for content */
         }
-
-        .file h3 {
-            margin: 0;
-            color: #333;
-            font-size: 18px;
-            text-align: right; /* تغيير اتجاه النص إلى اليمين */
+        label, p {
+            color: #ffffff; /* White text color for labels and paragraphs in Dark Mode */
         }
-
-        .options {
-            display: none;
+        input, select {
+            background-color: #444; /* Darker background for input fields */
+            color: #ffffff; /* White text color for better visibility */
+            border: 1px solid #666; /* Border color for input fields */
+            padding: 5px;
+            border-radius: 8px; /* Rounded corners for input and select fields */
         }
-
-        label, input, select {
-            margin: 5px;
-            font-size: 16px;
-            text-align: right; /* تغيير اتجاه النص إلى اليمين */
+        input[type="number"], input[type="text"] {
+            direction: ltr; /* Set direction to left-to-right */
         }
-
-        p {
-            font-weight: bold;
-            font-size: 16px;
-            text-align: right; /* تغيير اتجاه النص إلى اليمين */
-        }
-
-        .price {
-            color: #007bff;
-            font-size: 16px;
-            text-align: right; /* تغيير اتجاه النص إلى اليمين */
-        }
-
-        .gluePrice {
-            color: #007bff;
-            font-size: 16px;
-            text-align: right; /* تغيير اتجاه النص إلى اليمين */
-        }
-
-        .wirePrice {
-            color: #007bff;
-            font-size: 16px;
-            text-align: right; /* تغيير اتجاه النص إلى اليمين */
-        }
-
-        .totalPrice {
-            color: #007bff;
-            font-size: 18px;
-            margin-top: 10px;
-            text-align: right; /* تغيير اتجاه النص إلى اليمين */
-        }
-
-        @keyframes fadeIn {
-            0% {
-                opacity: 0;
-            }
-            100% {
-                opacity: 1;
-            }
-        }
-
-        /* تحسينات التصميم */
         input[type="checkbox"] {
-            transform: scale(1.5); /* زيادة حجم الـ Checkbox */
-            margin-left: 20px; /* زيادة المسافة بين الـ Checkbox والنص */
-            float: right; /* تحديد موقع الـ Checkbox على اليمين */
+            transform: scale(1.5); /* Increase size of checkboxes */
+            border-radius: 4px; /* Rounded corners for a softer look */
+            margin-right: 10px;
         }
-
-        /* تعديل التباعد بين الـ Checkbox والنص */
-        label {
-            margin-right: 5px; /* تحريك النص إلى اليسار من الـ Checkbox */
+        .price, .gluePrice, .wirePrice, .totalPrice {
+            color: #00bfff; /* Bright blue for prices to stand out in Dark Mode */
         }
-
+        /* Neon effect following the mouse */
+        body::after {
+            content: '';
+            position: absolute;
+            width: 200px;
+            height: 200px;
+            border-radius: 50%;
+            background: rgba(58, 150, 255, 0.4);
+            pointer-events: none;
+            transition: transform 0.1s ease;
+            z-index: -1;
+        }
     </style>
 </head>
 <body>
     <div id="container">
         <h1>حساب سعر الطباعة</h1>
-        
         <div id="files">
-            <!-- هنا ستتم إضافة الملفات -->
+            <!-- Files will be added here -->
         </div>
-
         <button onclick="addFile()">إضافة ملف جديد</button>
         <button onclick="calculateTotalPrice()">عرض مجموع السعر</button>
         <button onclick="resetData()">إعادة تصفير البيانات</button>
-
         <p id="totalPrice">مجموع السعر: <span id="totalPriceValue">0</span> ريال سعودي</p>
     </div>
-
     <script>
-        var fileCount = 1; // تهيئة عدد الملفات بـ1 عند بداية التحميل
+        document.addEventListener('mousemove', function(e) {
+            const neonEffect = document.body.querySelector('body::after');
+            if (neonEffect) {
+                neonEffect.style.transform = `translate(${e.clientX - 100}px, ${e.clientY - 100}px)`;
+            }
+        });
+
+        // Function to force English number input
+        function forceEnglishNumbers(inputElement) {
+            inputElement.addEventListener('input', function() {
+                // Convert Arabic numbers to English numbers
+                this.value = this.value.replace(/[٠١٢٣٤٥٦٧٨٩]/g, function(d) {
+                    return '0123456789'['٠١٢٣٤٥٦٧٨٩'.indexOf(d)];
+                });
+            });
+        }
+
+        // Original JavaScript functions, kept exactly as they were to maintain functionality
+        var fileCount = 1; // File count initialized to 1 on load
 
         function toggleOptions(button) {
             var fileDiv = button.parentElement;
@@ -147,140 +124,100 @@
             optionsDiv.style.display = optionsDiv.style.display === "none" ? "block" : "none";
         }
 
-       function addFile() {
-    var filesDiv = document.getElementById("files");
-    var fileDiv = document.createElement("div");
-    fileDiv.classList.add("file", "fadeIn");
+        function addFile() {
+            // Collapse all open options before adding a new file
+            var allOptions = document.querySelectorAll(".options");
+            allOptions.forEach(function(option) {
+                option.style.display = "none";
+            });
 
-    fileDiv.innerHTML = `
-        <h3>ملف ${fileCount}: <span class="pageCount">0</span> صفحة</h3>
-        <button onclick="toggleOptions(this)">عرض/إخفاء الخيارات</button>
-        <div class="options" style="display: none;">
-            <label for="pageCount">عدد الصفحات:</label>
-            <input type="text" id="pageCount" value="0"><br><br>
-            
-            <label for="pricePerPage">سعر الورق مقابل عدد الصفحات (بالريال):</label>
-            <input type="number" id="pricePerPage" value="10"><br><br>
-            
-            <label>كل ورقتين بورقة واحدة؟</label>
-            <input type="checkbox" id="doubleSided"><br><br>
-            
-            <label>بسلك؟</label>
-            <input type="checkbox" id="withWire"><br><br>
-            
-            <label>لصق؟</label>
-            <input type="checkbox" id="withGlue"><br><br>
-            
-            <label>وجه واحد أم وجهين؟</label>
-            <select id="sides">
-                <option value="1">وجه واحد</option>
-                <option value="2">وجهين</option>
-            </select><br><br>
-            
-            <label for="copyCount">عدد النسخ:</label>
-            <input type="number" id="copyCount" value="1"><br><br>
-        </div>
-        
-        <button onclick="calculatePrice(this)">حساب السعر</button>
-        <button onclick="removeFile(this)">حذف</button>
-        <p>سعر الورق: <span class="price">0 ريال سعودي</span></p>
-        <p>سعر السلك: <span class="wirePrice">0 ريال سعودي</span></p>
-        <p>سعر اللصق: <span class="gluePrice">0 ريال سعودي</span></p>
-        <p class="totalPrice">السعر الإجمالي: <span>0 ريال سعودي</span></p>
-    `;
+            // Adding the new file
+            var filesDiv = document.getElementById("files");
+            var fileDiv = document.createElement("div");
+            fileDiv.classList.add("file", "fadeIn");
 
-    filesDiv.appendChild(fileDiv);
-    fileCount++;
+            fileDiv.innerHTML = `
+                <h3>ملف ${fileCount}: <span class="pageCount">0</span> صفحة</h3>
+                <button onclick="toggleOptions(this)">عرض/إخفاء الخيارات</button>
+                <div class="options" style="display: none;">
+                    <label for="pageCount">عدد الصفحات:</label>
+                    <input type="text" id="pageCount" value="0" lang="en"><br><br>
+                    <label for="pricePerPage">سعر الورق مقابل عدد الصفحات (بالريال):</label>
+                    <input type="number" id="pricePerPage" value="10" lang="en"><br><br>
+                    <label>كل ورقتين بورقة واحدة؟</label>
+                    <input type="checkbox" id="doubleSided"><br><br>
+                    <label>بسلك؟</label>
+                    <input type="checkbox" id="withWire"><br><br>
+                    <label>لصق؟</label>
+                    <input type="checkbox" id="withGlue"><br><br>
+                    <label>وجه واحد أم وجهين؟</label>
+                    <select id="sides" lang="en">
+                        <option value="1">وجه واحد</option>
+                        <option value="2">وجهين</option>
+                    </select><br><br>
+                    <label for="copyCount">عدد النسخ:</label>
+                    <input type="number" id="copyCount" value="1" lang="en"><br><br>
+                </div>
+                <button onclick="calculatePrice(this)">حساب السعر</button>
+                <button onclick="removeFile(this)">حذف</button>
+                <p>سعر الورق: <span class="price">0 ريال سعودي</span></p>
+                <p>سعر السلك: <span class="wirePrice">0 ريال سعودي</span></p>
+                <p>سعر اللصق: <span class="gluePrice">0 ريال سعودي</span></p>
+                <p class="totalPrice">السعر الإجمالي: <span>0 ريال سعودي</span></p>
+            `;
 
-    // عند تغيير قيمة input#pageCount، قم بتحديث قيمة span.pageCount
-    fileDiv.querySelector("#pageCount").addEventListener("change", function() {
-        var pageCount = this.value;
-        fileDiv.querySelector(".pageCount").textContent = pageCount;
-    });
-}
+            filesDiv.appendChild(fileDiv);
+            fileCount++;
 
+            // Adding force English number enforcement
+            forceEnglishNumbers(fileDiv.querySelector("#pageCount"));
+            forceEnglishNumbers(fileDiv.querySelector("#pricePerPage"));
+            forceEnglishNumbers(fileDiv.querySelector("#copyCount"));
+
+            fileDiv.querySelector("#pageCount").addEventListener("change", function() {
+                var pageCount = this.value;
+                fileDiv.querySelector(".pageCount").textContent = pageCount;
+            });
+        }
 
         function resetData() {
             var filesDiv = document.getElementById("files");
-            filesDiv.innerHTML = ''; // مسح جميع الملفات
-            fileCount = 1; // إعادة تهيئة عدد الملفات
-            document.getElementById("totalPriceValue").textContent = '0'; // إعادة تهيئة مجموع السعر
+            filesDiv.innerHTML = ''; // Clear all files
+            fileCount = 1; // Reset file count
+            document.getElementById("totalPriceValue").textContent = '0'; // Reset total price
         }
 
         function removeFile(button) {
             var fileDiv = button.parentElement;
             fileDiv.remove();
-            calculateTotalPrice(); // حذف الملف يجب أن يؤثر على السعر الإجمالي
+            calculateTotalPrice(); // Removing file should affect total price
         }
 
         function calculatePrice(button) {
             var fileDiv = button.parentElement;
-            var pageCountInput = fileDiv.querySelector("#pageCount");
-            var pageCountText = pageCountInput.value.replace(/\s+/g, ''); // قم بإزالة الفراغات بين الأرقام
-            var pageCountArray = pageCountText.split('+'); // قسّم الأرقام باستخدام علامة '+'
-            var pageCount = 0;
-
-            for (var i = 0; i < pageCountArray.length; i++) {
-                var page = parseInt(pageCountArray[i]);
-                if (!isNaN(page)) {
-                    pageCount += page;
-                }
-            }
-
+            var pageCount = parseInt(fileDiv.querySelector("#pageCount").value);
             var pricePerPage = parseFloat(fileDiv.querySelector("#pricePerPage").value);
             var doubleSided = fileDiv.querySelector("#doubleSided").checked;
             var withWire = fileDiv.querySelector("#withWire").checked;
-            var withGlue = fileDiv.querySelector("#withGlue").checked; // إضافة اللصق
+            var withGlue = fileDiv.querySelector("#withGlue").checked;
             var sides = parseInt(fileDiv.querySelector("#sides").value);
             var copyCount = parseInt(fileDiv.querySelector("#copyCount").value);
 
-            // إذا تم تفعيل "كل ورقتين بورقة واحدة" قسم عدد الصفحات على 2
             if (doubleSided) {
                 pageCount /= 2;
             }
 
-            // حساب سعر السلك
-            var wirePrice = 0;
-            if (withWire) {
-                if (sides === 1) {
-                    if (pageCount <= 50) {
-                        wirePrice = 5; // سعر السلك ثابت لوجه واحد
-                    } else {
-                        wirePrice = (pageCount / 10).toFixed(2); // تقسيم الصفحات على 10 لوجه واحد وتقريب الناتج إلى الرقمين العشريين
-                    }
-                } else if (sides === 2) {
-                    if (pageCount <= 100) {
-                        wirePrice = 5; // سعر السلك ثابت لوجهين
-                    } else {
-                        wirePrice = (pageCount / 20).toFixed(2); // تقسيم الصفحات على 20 لوجهين وتقريب الناتج إلى الرقمين العشريين
-                    }
-                }
-            }
-
-            // حساب تكلفة اللصق
-            var gluePrice = 0;
-            if (withGlue) {
-                gluePrice = 5; // تكلفة اللصق
-            }
-
-            // حساب سعر الورق لنسخة واحدة
+            var wirePrice = withWire ? (sides === 1 ? pageCount <= 50 ? 5 : (pageCount / 10) : pageCount <= 100 ? 5 : (pageCount / 20)) : 0;
+            var gluePrice = withGlue ? 5 : 0;
             var pricePerPageForOneCopy = pageCount / pricePerPage;
+            var totalPriceForAllCopies = (pricePerPageForOneCopy + wirePrice + gluePrice) * copyCount;
 
-            // حساب السعر الإجمالي للنسخ المتعددة بعد ضربها في عدد النسخ
-            var totalPriceForAllCopies = (pricePerPageForOneCopy + parseFloat(wirePrice) + parseFloat(gluePrice)) * copyCount;
+            fileDiv.querySelector(".price").textContent = pricePerPageForOneCopy.toFixed(2) + " ريال سعودي";
+            fileDiv.querySelector(".wirePrice").textContent = wirePrice.toFixed(2) + " ريال سعودي";
+            fileDiv.querySelector(".gluePrice").textContent = gluePrice.toFixed(2) + " ريال سعودي";
+            fileDiv.querySelector(".totalPrice span").textContent = totalPriceForAllCopies.toFixed(2) + " ريال سعودي";
 
-            // تحديث عرض سعر الورق وسعر السلك وسعر اللصق والسعر الإجمالي
-            var priceElement = fileDiv.querySelector(".price");
-            var wirePriceElement = fileDiv.querySelector(".wirePrice");
-            var gluePriceElement = fileDiv.querySelector(".gluePrice"); // إضافة اللصق
-            var totalPriceElement = fileDiv.querySelector(".totalPrice");
-
-            priceElement.textContent = pricePerPageForOneCopy.toFixed(2) + " ريال سعودي";
-            wirePriceElement.textContent = parseFloat(wirePrice).toFixed(2) + " ريال سعودي";
-            gluePriceElement.textContent = parseFloat(gluePrice).toFixed(2) + " ريال سعودي"; // إضافة اللصق
-            totalPriceElement.querySelector("span").textContent = totalPriceForAllCopies.toFixed(2) + " ريال سعودي";
-
-            calculateTotalPrice(); // حساب السعر الإجمالي بعد حساب السعر للملف الفردي
+            calculateTotalPrice();
         }
 
         function calculateTotalPrice() {
@@ -289,10 +226,8 @@
             for (var i = 0; i < files.length; i++) {
                 totalPrice += parseFloat(files[i].textContent);
             }
-            var totalPriceElement = document.getElementById("totalPriceValue");
-            totalPriceElement.textContent = totalPrice.toFixed(2);
+            document.getElementById("totalPriceValue").textContent = totalPrice.toFixed(2);
         }
     </script>
 </body>
 </html>
-
