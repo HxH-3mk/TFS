@@ -129,60 +129,80 @@
         }
 
         function addFile() {
+            
             // Collapse all open options before adding a new file
             var allOptions = document.querySelectorAll(".options");
             allOptions.forEach(function(option) {
                 option.style.display = "none";
             });
+            
+    var filesDiv = document.getElementById("files");
+    var fileDiv = document.createElement("div");
+    fileDiv.classList.add("file", "fadeIn");
 
-            // Adding the new file
-            var filesDiv = document.getElementById("files");
-            var fileDiv = document.createElement("div");
-            fileDiv.classList.add("file", "fadeIn");
+    fileDiv.innerHTML = `
+        <h3>ملف ${fileCount}: <span class="pageCount">0</span> صفحة</h3>
+        <button onclick="toggleOptions(this)">عرض/إخفاء الخيارات</button>
+        <div class="options" style="display: none;">
+            <label for="pageCount">عدد الصفحات:</label>
+            <input type="text" id="pageCount" value="0" lang="en"><br><br>
+            <label for="pricePerPage">سعر الورق مقابل عدد الصفحات (بالريال):</label>
+            <input type="text" id="pricePerPage" value="10" lang="en"><br><br>
+            <label>كل ورقتين بورقة واحدة؟</label>
+            <input type="checkbox" id="doubleSided"><br><br>
+            <label>بسلك؟</label>
+            <input type="checkbox" id="withWire"><br><br>
+            <label>لصق؟</label>
+            <input type="checkbox" id="withGlue"><br><br>
+            <label>وجه واحد أم وجهين؟</label>
+            <select id="sides" lang="en">
+                <option value="1">وجه واحد</option>
+                <option value="2">وجهين</option>
+            </select><br><br>
+            <label for="copyCount">عدد النسخ:</label>
+            <input type="text" id="copyCount" value="1" lang="en"><br><br>
+        </div>
+        <button onclick="calculatePrice(this)">حساب السعر</button>
+        <button onclick="removeFile(this)">حذف</button>
+        <p>سعر الورق: <span class="price">0 ريال سعودي</span></p>
+        <p>سعر السلك: <span class="wirePrice">0 ريال سعودي</span></p>
+        <p>سعر اللصق: <span class="gluePrice">0 ريال سعودي</span></p>
+        <p class="totalPrice">السعر الإجمالي: <span>0 ريال سعودي</span></p>
+    `;
 
-            fileDiv.innerHTML = `
-                <h3>ملف ${fileCount}: <span class="pageCount">0</span> صفحة</h3>
-                <button onclick="toggleOptions(this)">عرض/إخفاء الخيارات</button>
-                <div class="options" style="display: none;">
-                    <label for="pageCount">عدد الصفحات:</label>
-                    <input type="text" id="pageCount" value="0" lang="en"><br><br>
-                    <label for="pricePerPage">سعر الورق مقابل عدد الصفحات (بالريال):</label>
-                    <input type="text" id="pricePerPage" value="10" lang="en"><br><br>
-                    <label>كل ورقتين بورقة واحدة؟</label>
-                    <input type="checkbox" id="doubleSided"><br><br>
-                    <label>بسلك؟</label>
-                    <input type="checkbox" id="withWire"><br><br>
-                    <label>لصق؟</label>
-                    <input type="checkbox" id="withGlue"><br><br>
-                    <label>وجه واحد أم وجهين؟</label>
-                    <select id="sides" lang="en">
-                        <option value="1">وجه واحد</option>
-                        <option value="2">وجهين</option>
-                    </select><br><br>
-                    <label for="copyCount">عدد النسخ:</label>
-                    <input type="text" id="copyCount" value="1" lang="en"><br><br>
-                </div>
-                <button onclick="calculatePrice(this)">حساب السعر</button>
-                <button onclick="removeFile(this)">حذف</button>
-                <p>سعر الورق: <span class="price">0 ريال سعودي</span></p>
-                <p>سعر السلك: <span class="wirePrice">0 ريال سعودي</span></p>
-                <p>سعر اللصق: <span class="gluePrice">0 ريال سعودي</span></p>
-                <p class="totalPrice">السعر الإجمالي: <span>0 ريال سعودي</span></p>
-            `;
+    filesDiv.appendChild(fileDiv);
+    fileCount++;
 
-            filesDiv.appendChild(fileDiv);
-            fileCount++;
+    // تطبيق إجبار استخدام الأرقام الإنجليزية
+    forceEnglishNumbers(fileDiv.querySelector("#pageCount"));
+    forceEnglishNumbers(fileDiv.querySelector("#pricePerPage"));
+    forceEnglishNumbers(fileDiv.querySelector("#copyCount"));
 
-            // Adding force English number enforcement
-            forceEnglishNumbers(fileDiv.querySelector("#pageCount"));
-            forceEnglishNumbers(fileDiv.querySelector("#pricePerPage"));
-            forceEnglishNumbers(fileDiv.querySelector("#copyCount"));
+    // تقييم التعبير المكتوب في الحقول
+    evaluateExpression(fileDiv.querySelector("#pageCount"));
+    evaluateExpression(fileDiv.querySelector("#pricePerPage"));
+    evaluateExpression(fileDiv.querySelector("#copyCount"));
 
-            fileDiv.querySelector("#pageCount").addEventListener("change", function() {
-                var pageCount = this.value;
-                fileDiv.querySelector(".pageCount").textContent = pageCount;
-            });
+function evaluateExpression(inputElement) {
+    inputElement.addEventListener('change', function () {
+        try {
+            // قم بحساب التعبير الرياضي المكتوب في الحقل
+            const evaluatedValue = Function('"use strict";return (' + this.value + ')')();
+            this.value = evaluatedValue; // ضع النتيجة النهائية في الحقل
+        } catch (e) {
+            alert("صيغة غير صحيحة! تأكد من إدخال تعبير رياضي صالح.");
+            this.value = 0; // إعادة الحقل إلى 0 في حالة خطأ
         }
+    });
+}
+
+
+    fileDiv.querySelector("#pageCount").addEventListener("change", function() {
+        var pageCount = this.value;
+        fileDiv.querySelector(".pageCount").textContent = pageCount;
+    });
+}
+
 
         function resetData() {
             var filesDiv = document.getElementById("files");
