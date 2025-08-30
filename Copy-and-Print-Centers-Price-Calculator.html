@@ -88,11 +88,48 @@
             transition: transform 0.1s ease;
             z-index: -1;
         }
+
+        /* New styles for file drop area */
+        #fileDropArea {
+            border: 2px dashed #007bff;
+            border-radius: 16px;
+            padding: 20px;
+            text-align: center;
+            color: #007bff;
+            margin-bottom: 20px;
+            cursor: pointer;
+        }
+        #fileDropArea:hover {
+            background-color: rgba(0, 123, 255, 0.1);
+        }
     </style>
 </head>
 <body>
     <div id="container">
         <h1>حساب سعر الطباعة</h1>
+
+        <!-- New file drop area -->
+        <div id="fileDropArea">اسحب الملفات هنا</div>
+
+        <div id="defaultOptions" style="margin-bottom: 20px;">
+    <h2>الإعدادات الافتراضية</h2>
+    <label for="defaultPricePerPage">سعر الورق الافتراضي مقابل عدد الصفحات (بالريال):</label>
+    <input type="text" id="defaultPricePerPage" value="10" lang="en"><br><br>
+    <label>كل ورقتين بورقة واحدة؟</label>
+    <input type="checkbox" id="defaultDoubleSided"><br><br>
+    <label>بسلك؟</label>
+    <input type="checkbox" id="defaultWithWire"><br><br>
+    <label>لصق؟</label>
+    <input type="checkbox" id="defaultWithGlue"><br><br>
+    <label for="defaultSides">وجه واحد أم وجهين؟</label>
+    <select id="defaultSides" lang="en">
+        <option value="1">وجه واحد</option>
+        <option value="2">وجهين</option>
+    </select><br><br>
+    <label for="defaultCopyCount">عدد النسخ الافتراضي:</label>
+    <input type="text" id="defaultCopyCount" value="1" lang="en"><br><br>
+    <button onclick="applyDefaults()">تطبيق الإعدادات الافتراضية لكل الملفات</button>
+</div>
         <div id="files">
             <!-- Files will be added here -->
         </div>
@@ -101,6 +138,7 @@
         <button onclick="resetData()">إعادة تصفير البيانات</button>
         <p id="totalPrice">مجموع السعر: <span id="totalPriceValue">0</span> ريال سعودي</p>
     </div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
     <script>
         document.addEventListener('mousemove', function(e) {
             const neonEffect = document.body.querySelector('body::after');
@@ -251,6 +289,102 @@ function evaluateExpression(inputElement) {
                 totalPrice += parseFloat(files[i].textContent);
             }
             document.getElementById("totalPriceValue").textContent = totalPrice.toFixed(2);
+        }
+
+        function applyDefaults() {
+    var defaultPricePerPage = document.getElementById("defaultPricePerPage").value;
+    var defaultDoubleSided = document.getElementById("defaultDoubleSided").checked;
+    var defaultWithWire = document.getElementById("defaultWithWire").checked;
+    var defaultWithGlue = document.getElementById("defaultWithGlue").checked;
+    var defaultSides = document.getElementById("defaultSides").value;
+    var defaultCopyCount = document.getElementById("defaultCopyCount").value;
+
+    var files = document.querySelectorAll(".file");
+    files.forEach(function(file) {
+        file.querySelector("#pricePerPage").value = defaultPricePerPage;
+        file.querySelector("#doubleSided").checked = defaultDoubleSided;
+        file.querySelector("#withWire").checked = defaultWithWire;
+        file.querySelector("#withGlue").checked = defaultWithGlue;
+        file.querySelector("#sides").value = defaultSides;
+        file.querySelector("#copyCount").value = defaultCopyCount;
+    });
+}
+
+        // Handle file drop
+        const fileDropArea = document.getElementById('fileDropArea');
+        fileDropArea.addEventListener('dragover', (event) => {
+            event.preventDefault();
+            fileDropArea.style.backgroundColor = 'rgba(0, 123, 255, 0.2)';
+        });
+
+        fileDropArea.addEventListener('dragleave', () => {
+            fileDropArea.style.backgroundColor = 'transparent';
+        });
+
+        fileDropArea.addEventListener('drop', (event) => {
+            event.preventDefault();
+            fileDropArea.style.backgroundColor = 'transparent';
+            const files = event.dataTransfer.files;
+            if (files.length > 0) {
+                const file = files[0];
+                if (file.type === 'application/pdf') {
+                    const reader = new FileReader();
+                    reader.onload = function() {
+                        const typedarray = new Uint8Array(this.result);
+                        pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
+                            const pageCount = pdf.numPages;
+                            addFileWithPageCount(pageCount);
+                        });
+                    };
+                    reader.readAsArrayBuffer(file);
+                } else {
+                    alert('Please drop a PDF file.');
+                }
+            }
+        });
+
+        function addFileWithPageCount(pageCount) {
+            var filesDiv = document.getElementById("files");
+            var fileDiv = document.createElement("div");
+            fileDiv.classList.add("file", "fadeIn");
+
+            fileDiv.innerHTML = `
+                <h3>ملف ${fileCount}: <span class="pageCount">${pageCount}</span> صفحة</h3>
+                <button onclick="toggleOptions(this)">عرض/إخفاء الخيارات</button>
+                <div class="options" style="display: none;">
+                    <label for="pageCount">عدد الصفحات:</label>
+                    <input type="text" id="pageCount" value="${pageCount}" lang="en"><br><br>
+                    <label for="pricePerPage">سعر الورق مقابل عدد الصفحات (بالريال):</label>
+                    <input type="text" id="pricePerPage" value="10" lang="en"><br><br>
+                    <label>كل ورقتين بورقة واحدة؟</label>
+                    <input type="checkbox" id="doubleSided"><br><br>
+                    <label>بسلك؟</label>
+                    <input type="checkbox" id="withWire"><br><br>
+                    <label>لصق؟</label>
+                    <input type="checkbox" id="withGlue"><br><br>
+                    <label>وجه واحد أم وجهين؟</label>
+                    <select id="sides" lang="en">
+                        <option value="1">وجه واحد</option>
+                        <option value="2">وجهين</option>
+                    </select><br><br>
+                    <label for="copyCount">عدد النسخ:</label>
+                    <input type="text" id="copyCount" value="1" lang="en"><br><br>
+                </div>
+                <button onclick="calculatePrice(this)">حساب السعر</button>
+                <button onclick="removeFile(this)">حذف</button>
+                <p>سعر الورق: <span class="price">0 ريال سعودي</span></p>
+                <p>سعر السلك: <span class="wirePrice">0 ريال سعودي</span></p>
+                <p>سعر اللصق: <span class="gluePrice">0 ريال سعودي</span></p>
+                <p class="totalPrice">السعر الإجمالي: <span>0 ريال سعودي</span></p>
+            `;
+
+            filesDiv.appendChild(fileDiv);
+            fileCount++;
+
+            // Apply force English numbers
+            forceEnglishNumbers(fileDiv.querySelector("#pageCount"));
+            // Evaluate expression
+            evaluateExpression(fileDiv.querySelector("#pageCount"));
         }
     </script>
 </body>
