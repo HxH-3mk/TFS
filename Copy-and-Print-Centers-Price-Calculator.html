@@ -307,6 +307,9 @@ function evaluateExpression(inputElement) {
         file.querySelector("#withGlue").checked = defaultWithGlue;
         file.querySelector("#sides").value = defaultSides;
         file.querySelector("#copyCount").value = defaultCopyCount;
+        
+        // Calculate price for each file after applying defaults
+        calculatePrice(file.querySelector('button[onclick="calculatePrice(this)"]'));
     });
 }
 
