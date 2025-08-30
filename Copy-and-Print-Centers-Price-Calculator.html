@@ -328,8 +328,7 @@ function evaluateExpression(inputElement) {
             event.preventDefault();
             fileDropArea.style.backgroundColor = 'transparent';
             const files = event.dataTransfer.files;
-            if (files.length > 0) {
-                const file = files[0];
+            Array.from(files).forEach(file => {
                 if (file.type === 'application/pdf') {
                     const reader = new FileReader();
                     reader.onload = function() {
@@ -343,7 +342,7 @@ function evaluateExpression(inputElement) {
                 } else {
                     alert('Please drop a PDF file.');
                 }
-            }
+            });
         });
 
         function addFileWithPageCount(pageCount) {
