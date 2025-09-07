@@ -361,7 +361,8 @@ function evaluateExpression(inputElement) {
             const reader = new FileReader();
             reader.onload = function() {
                 mammoth.extractRawText({arrayBuffer: this.result}).then(function(result) {
-                    const pageCount = Math.ceil(result.value.length / 1500); // Rough estimate: 1500 characters per page
+                    const wordCount = result.value.split(/\s+/).length; // Count words
+                    const pageCount = Math.ceil(wordCount / 300); // Estimate: 300 words per page
                     addFileWithPageCount(pageCount);
                 });
             };
