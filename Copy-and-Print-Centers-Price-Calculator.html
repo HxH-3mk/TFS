@@ -331,16 +331,17 @@ function evaluateExpression(inputElement) {
             fileDropArea.style.backgroundColor = 'transparent';
             const files = event.dataTransfer.files;
             Array.from(files).forEach(file => {
-                if (file.type === 'application/pdf') {
+                const name = (file.name || '').toLowerCase();
+                if (file.type === 'application/pdf' || /\.pdf$/i.test(name)) {
                     handlePDF(file);
-                } else if (['image/png', 'image/jpeg', 'image/jpg'].includes(file.type)) {
+                } else if (['image/png', 'image/jpeg', 'image/jpg'].includes(file.type) || /\.(png|jpe?g)$/i.test(name)) {
                     addFileWithPageCount(1); // Each image is considered as one page
-                } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+                } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || /\.docx$/i.test(name)) {
                     handleWord(file);
-                } else if (file.type === 'application/vnd.openxmlformats-officedocument.presentationml.presentation') {
+                } else if (file.type === 'application/vnd.openxmlformats-officedocument.presentationml.presentation' || /\.pptx$/i.test(name)) {
                     handlePPTX(file);
                 } else {
-                    alert('Unsupported file type. Please drop a PDF, image, Word, or PPTX file.');
+                    alert('Unsupported file type. Please drop a PDF, image, Word (.docx), or PPTX file.');
                 }
             });
         });
@@ -360,15 +361,46 @@ function evaluateExpression(inputElement) {
         function handleWord(file) {
             const reader = new FileReader();
             reader.onload = function() {
-                mammoth.extractRawText({arrayBuffer: this.result}).then(function(result) {
-                    const wordCount = result.value.split(/\s+/).length; // Count words
-                    console.log('Word Count:', wordCount); // Log word count
-                    const pageCount = Math.ceil(wordCount / 300); // Estimate: 300 words per page
-                    console.log('Estimated Page Count:', pageCount); // Log estimated page count
-                    addFileWithPageCount(pageCount);
+                const arrayBuffer = this.result;
+                JSZip.loadAsync(arrayBuffer).then(function(zip) {
+                    const appXmlFile = zip.file('docProps/app.xml');
+                    if (appXmlFile) {
+                        appXmlFile.async('text').then(function(xmlText) {
+                            try {
+                                const parser = new DOMParser();
+                                const xmlDoc = parser.parseFromString(xmlText, 'application/xml');
+                                const pagesNode = xmlDoc.getElementsByTagName('Pages')[0];
+                                const pages = pagesNode ? parseInt(pagesNode.textContent, 10) : NaN;
+                                if (!isNaN(pages) && pages > 0) {
+                                    addFileWithPageCount(pages);
+                                } else {
+                                    fallbackEstimateWithMammoth(arrayBuffer);
+                                }
+                            } catch (e) {
+                                fallbackEstimateWithMammoth(arrayBuffer);
+                            }
+                        }).catch(function() {
+                            fallbackEstimateWithMammoth(arrayBuffer);
+                        });
+                    } else {
+                        fallbackEstimateWithMammoth(arrayBuffer);
+                    }
+                }).catch(function() {
+                    fallbackEstimateWithMammoth(arrayBuffer);
                 });
             };
             reader.readAsArrayBuffer(file);
+        }
+
+        function fallbackEstimateWithMammoth(arrayBuffer) {
+            mammoth.extractRawText({ arrayBuffer: arrayBuffer }).then(function(result) {
+                const text = (result && result.value) ? result.value.trim() : '';
+                const wordCount = text ? text.split(/\s+/).length : 0;
+                const pageCount = Math.max(1, Math.ceil(wordCount / 300));
+                addFileWithPageCount(pageCount);
+            }).catch(function() {
+                addFileWithPageCount(1);
+            });
         }
 
         function handlePPTX(file) {
