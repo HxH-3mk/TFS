@@ -139,6 +139,8 @@
         <p id="totalPrice">مجموع السعر: <span id="totalPriceValue">0</span> ريال سعودي</p>
     </div>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.5.0/mammoth.browser.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script>
         document.addEventListener('mousemove', function(e) {
             const neonEffect = document.body.querySelector('body::after');
@@ -330,20 +332,53 @@ function evaluateExpression(inputElement) {
             const files = event.dataTransfer.files;
             Array.from(files).forEach(file => {
                 if (file.type === 'application/pdf') {
-                    const reader = new FileReader();
-                    reader.onload = function() {
-                        const typedarray = new Uint8Array(this.result);
-                        pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
-                            const pageCount = pdf.numPages;
-                            addFileWithPageCount(pageCount);
-                        });
-                    };
-                    reader.readAsArrayBuffer(file);
+                    handlePDF(file);
+                } else if (['image/png', 'image/jpeg', 'image/jpg'].includes(file.type)) {
+                    addFileWithPageCount(1); // Each image is considered as one page
+                } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+                    handleWord(file);
+                } else if (file.type === 'application/vnd.openxmlformats-officedocument.presentationml.presentation') {
+                    handlePPTX(file);
                 } else {
-                    alert('Please drop a PDF file.');
+                    alert('Unsupported file type. Please drop a PDF, image, Word, or PPTX file.');
                 }
             });
         });
+
+        function handlePDF(file) {
+            const reader = new FileReader();
+            reader.onload = function() {
+                const typedarray = new Uint8Array(this.result);
+                pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
+                    const pageCount = pdf.numPages;
+                    addFileWithPageCount(pageCount);
+                });
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function handleWord(file) {
+            const reader = new FileReader();
+            reader.onload = function() {
+                mammoth.extractRawText({arrayBuffer: this.result}).then(function(result) {
+                    const pageCount = Math.ceil(result.value.length / 1500); // Rough estimate: 1500 characters per page
+                    addFileWithPageCount(pageCount);
+                });
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function handlePPTX(file) {
+            const reader = new FileReader();
+            reader.onload = function() {
+                const zip = new JSZip();
+                zip.loadAsync(this.result).then(function(zip) {
+                    const slideCount = Object.keys(zip.files).filter(fileName => fileName.match(/ppt\/slides\/slide\d+\.xml/)).length;
+                    addFileWithPageCount(slideCount);
+                });
+            };
+            reader.readAsArrayBuffer(file);
+        }
 
         function addFileWithPageCount(pageCount) {
             var filesDiv = document.getElementById("files");
