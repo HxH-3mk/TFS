@@ -142,6 +142,9 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.5.0/mammoth.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script>
+        if (window.pdfjsLib && pdfjsLib.GlobalWorkerOptions) {
+            pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.worker.min.js';
+        }
         document.addEventListener('mousemove', function(e) {
             const neonEffect = document.body.querySelector('body::after');
             if (neonEffect) {
@@ -161,6 +164,18 @@
 
         // Original JavaScript functions, kept exactly as they were to maintain functionality
         var fileCount = 1; // File count initialized to 1 on load
+
+        function evaluateExpression(inputElement) {
+            inputElement.addEventListener('change', function () {
+                try {
+                    const evaluatedValue = Function('"use strict";return (' + this.value + ')')();
+                    this.value = evaluatedValue;
+                } catch (e) {
+                    alert("صيغة غير صحيحة! تأكد من إدخال تعبير رياضي صالح.");
+                    this.value = 0;
+                }
+            });
+        }
 
         function toggleOptions(button) {
             var fileDiv = button.parentElement;
@@ -223,18 +238,7 @@
     evaluateExpression(fileDiv.querySelector("#pricePerPage"));
     evaluateExpression(fileDiv.querySelector("#copyCount"));
 
-function evaluateExpression(inputElement) {
-    inputElement.addEventListener('change', function () {
-        try {
-            // قم بحساب التعبير الرياضي المكتوب في الحقل
-            const evaluatedValue = Function('"use strict";return (' + this.value + ')')();
-            this.value = evaluatedValue; // ضع النتيجة النهائية في الحقل
-        } catch (e) {
-            alert("صيغة غير صحيحة! تأكد من إدخال تعبير رياضي صالح.");
-            this.value = 0; // إعادة الحقل إلى 0 في حالة خطأ
-        }
-    });
-}
+/* evaluateExpression moved to global scope */
 
 
     fileDiv.querySelector("#pageCount").addEventListener("change", function() {
@@ -330,7 +334,11 @@ function evaluateExpression(inputElement) {
             event.preventDefault();
             fileDropArea.style.backgroundColor = 'transparent';
             const files = event.dataTransfer.files;
+            const seen = new Set();
             Array.from(files).forEach(file => {
+                const key = (file.name || '') + ':' + (file.size || 0) + ':' + (file.lastModified || 0);
+                if (seen.has(key)) { return; }
+                seen.add(key);
                 const name = (file.name || '').toLowerCase();
                 if (file.type === 'application/pdf' || /\.pdf$/i.test(name)) {
                     handlePDF(file);
@@ -362,6 +370,8 @@ function evaluateExpression(inputElement) {
             const reader = new FileReader();
             reader.onload = function() {
                 const arrayBuffer = this.result;
+                let added = false;
+                const safeAdd = (n) => { if (added) return; added = true; addFileWithPageCount(n); };
                 JSZip.loadAsync(arrayBuffer).then(function(zip) {
                     const appXmlFile = zip.file('docProps/app.xml');
                     if (appXmlFile) {
@@ -372,34 +382,34 @@ function evaluateExpression(inputElement) {
                                 const pagesNode = xmlDoc.getElementsByTagName('Pages')[0];
                                 const pages = pagesNode ? parseInt(pagesNode.textContent, 10) : NaN;
                                 if (!isNaN(pages) && pages > 0) {
-                                    addFileWithPageCount(pages);
+                                    safeAdd(pages);
                                 } else {
-                                    fallbackEstimateWithMammoth(arrayBuffer);
+                                    fallbackEstimateWithMammoth(arrayBuffer, safeAdd);
                                 }
                             } catch (e) {
-                                fallbackEstimateWithMammoth(arrayBuffer);
+                                fallbackEstimateWithMammoth(arrayBuffer, safeAdd);
                             }
                         }).catch(function() {
-                            fallbackEstimateWithMammoth(arrayBuffer);
+                            fallbackEstimateWithMammoth(arrayBuffer, safeAdd);
                         });
                     } else {
-                        fallbackEstimateWithMammoth(arrayBuffer);
+                        fallbackEstimateWithMammoth(arrayBuffer, safeAdd);
                     }
                 }).catch(function() {
-                    fallbackEstimateWithMammoth(arrayBuffer);
+                    fallbackEstimateWithMammoth(arrayBuffer, safeAdd);
                 });
             };
             reader.readAsArrayBuffer(file);
         }
 
-        function fallbackEstimateWithMammoth(arrayBuffer) {
+        function fallbackEstimateWithMammoth(arrayBuffer, addOnce) {
             mammoth.extractRawText({ arrayBuffer: arrayBuffer }).then(function(result) {
                 const text = (result && result.value) ? result.value.trim() : '';
                 const wordCount = text ? text.split(/\s+/).length : 0;
                 const pageCount = Math.max(1, Math.ceil(wordCount / 300));
-                addFileWithPageCount(pageCount);
+                (addOnce || addFileWithPageCount)(pageCount);
             }).catch(function() {
-                addFileWithPageCount(1);
+                (addOnce || addFileWithPageCount)(1);
             });
         }
 
@@ -416,6 +426,7 @@ function evaluateExpression(inputElement) {
         }
 
         function addFileWithPageCount(pageCount) {
+            pageCount = Math.max(1, Math.round(Number(pageCount) || 0));
             var filesDiv = document.getElementById("files");
             var fileDiv = document.createElement("div");
             fileDiv.classList.add("file", "fadeIn");
@@ -455,8 +466,17 @@ function evaluateExpression(inputElement) {
 
             // Apply force English numbers
             forceEnglishNumbers(fileDiv.querySelector("#pageCount"));
+            forceEnglishNumbers(fileDiv.querySelector("#pricePerPage"));
+            forceEnglishNumbers(fileDiv.querySelector("#copyCount"));
             // Evaluate expression
             evaluateExpression(fileDiv.querySelector("#pageCount"));
+            evaluateExpression(fileDiv.querySelector("#pricePerPage"));
+            evaluateExpression(fileDiv.querySelector("#copyCount"));
+
+            fileDiv.querySelector("#pageCount").addEventListener("change", function() {
+                var pageCountVal = this.value;
+                fileDiv.querySelector(".pageCount").textContent = pageCountVal;
+            });
         }
     </script>
 </body>
