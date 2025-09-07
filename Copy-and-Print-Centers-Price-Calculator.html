@@ -362,7 +362,9 @@ function evaluateExpression(inputElement) {
             reader.onload = function() {
                 mammoth.extractRawText({arrayBuffer: this.result}).then(function(result) {
                     const wordCount = result.value.split(/\s+/).length; // Count words
+                    console.log('Word Count:', wordCount); // Log word count
                     const pageCount = Math.ceil(wordCount / 300); // Estimate: 300 words per page
+                    console.log('Estimated Page Count:', pageCount); // Log estimated page count
                     addFileWithPageCount(pageCount);
                 });
             };
