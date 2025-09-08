@@ -190,9 +190,11 @@
     var filesDiv = document.getElementById("files");
     var fileDiv = document.createElement("div");
     fileDiv.classList.add("file", "fadeIn");
+    fileDiv.dataset.fileType = 'يدوي';
+    fileDiv.dataset.fileName = '—';
 
     fileDiv.innerHTML = `
-        <h3>ملف ${fileCount}: <span class="pageCount">0</span> صفحة</h3>
+        <h3>ملف ${fileCount}: <span class="fileInfo">يدوي - —</span> — <span class="pageCount">0</span> صفحة</h3>
         <div class="options" style="display: none;">
             <label for="pageCount">عدد الصفحات:</label>
             <input type="text" id="pageCount" value="0" lang="en"><br><br>
@@ -223,6 +225,7 @@
     filesDiv.appendChild(fileDiv);
     fileCount++;
     renumberFiles();
+    updateFileHeader(fileDiv);
 
     // Hover to show options for this file only
     fileDiv.addEventListener('mouseenter', function() {
@@ -273,12 +276,21 @@
         function renumberFiles() {
             var files = document.querySelectorAll('#files .file');
             files.forEach(function(fileDiv, index) {
-                var header = fileDiv.querySelector('h3');
-                if (!header) return;
-                var pageSpan = fileDiv.querySelector('.pageCount');
-                var pageText = pageSpan ? pageSpan.textContent : '0';
-                header.innerHTML = `ملف ${index + 1}: <span class="pageCount">${pageText}</span> صفحة`;
+                updateFileHeader(fileDiv, index);
             });
+        }
+
+        function updateFileHeader(fileDiv, indexOverride) {
+            var header = fileDiv.querySelector('h3');
+            if (!header) return;
+            var allFiles = Array.from(document.querySelectorAll('#files .file'));
+            var index = (typeof indexOverride === 'number') ? indexOverride : allFiles.indexOf(fileDiv);
+            var fileIndex = (index >= 0 ? index + 1 : 1);
+            var pageSpan = fileDiv.querySelector('.pageCount');
+            var pageText = pageSpan ? pageSpan.textContent : '0';
+            var fileType = fileDiv.dataset.fileType || 'يدوي';
+            var fileName = fileDiv.dataset.fileName || 'بدون اسم';
+            header.innerHTML = `ملف ${fileIndex}: <span class="fileInfo">${fileType} - ${fileName}</span> — <span class="pageCount">${pageText}</span> صفحة`;
         }
 
         function calculatePrice(button) {
@@ -389,7 +401,7 @@
                 if (file.type === 'application/pdf' || /\.pdf$/i.test(name)) {
                     handlePDF(file);
                 } else if (['image/png', 'image/jpeg', 'image/jpg'].includes(file.type) || /\.(png|jpe?g)$/i.test(name)) {
-                    addFileWithPageCount(1); // Each image is considered as one page
+                    addFileWithPageCount(1, file); // Each image is considered as one page
                 } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || /\.docx$/i.test(name)) {
                     handleWord(file);
                 } else if (file.type === 'application/vnd.openxmlformats-officedocument.presentationml.presentation' || /\.pptx$/i.test(name)) {
@@ -406,7 +418,7 @@
                 const typedarray = new Uint8Array(this.result);
                 pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
                     const pageCount = pdf.numPages;
-                    addFileWithPageCount(pageCount);
+                    addFileWithPageCount(pageCount, file);
                 });
             };
             reader.readAsArrayBuffer(file);
@@ -417,7 +429,7 @@
             reader.onload = function() {
                 const arrayBuffer = this.result;
                 let added = false;
-                const safeAdd = (n) => { if (added) return; added = true; addFileWithPageCount(n); };
+                const safeAdd = (n) => { if (added) return; added = true; addFileWithPageCount(n, file); };
                 JSZip.loadAsync(arrayBuffer).then(function(zip) {
                     const appXmlFile = zip.file('docProps/app.xml');
                     if (appXmlFile) {
@@ -453,9 +465,9 @@
                 const text = (result && result.value) ? result.value.trim() : '';
                 const wordCount = text ? text.split(/\s+/).length : 0;
                 const pageCount = Math.max(1, Math.ceil(wordCount / 300));
-                (addOnce || addFileWithPageCount)(pageCount);
+                (addOnce || addFileWithPageCount)(pageCount, null);
             }).catch(function() {
-                (addOnce || addFileWithPageCount)(1);
+                (addOnce || addFileWithPageCount)(1, null);
             });
         }
 
@@ -465,20 +477,36 @@
                 const zip = new JSZip();
                 zip.loadAsync(this.result).then(function(zip) {
                     const slideCount = Object.keys(zip.files).filter(fileName => fileName.match(/ppt\/slides\/slide\d+\.xml/)).length;
-                    addFileWithPageCount(slideCount);
+                    addFileWithPageCount(slideCount, file);
                 });
             };
             reader.readAsArrayBuffer(file);
         }
 
-        function addFileWithPageCount(pageCount) {
+        function addFileWithPageCount(pageCount, srcFile) {
             pageCount = Math.max(1, Math.round(Number(pageCount) || 0));
             var filesDiv = document.getElementById("files");
             var fileDiv = document.createElement("div");
             fileDiv.classList.add("file", "fadeIn");
+            if (srcFile) {
+                var name = srcFile.name || 'بدون اسم';
+                var type = (srcFile.type || '').toLowerCase();
+                var ext = name.split('.').pop().toLowerCase();
+                var typeLabel = 'ملف';
+                if (type.includes('pdf') || ext === 'pdf') typeLabel = 'PDF';
+                else if (type.includes('word') || ext === 'docx') typeLabel = 'DOCX';
+                else if (type.includes('presentation') || ext === 'pptx') typeLabel = 'PPTX';
+                else if (type.includes('png') || ext === 'png') typeLabel = 'PNG';
+                else if (type.includes('jpeg') || type.includes('jpg') || ext === 'jpg' || ext === 'jpeg') typeLabel = 'JPG';
+                fileDiv.dataset.fileType = typeLabel;
+                fileDiv.dataset.fileName = name;
+            } else {
+                fileDiv.dataset.fileType = 'يدوي';
+                fileDiv.dataset.fileName = '—';
+            }
 
             fileDiv.innerHTML = `
-                <h3>ملف ${fileCount}: <span class="pageCount">${pageCount}</span> صفحة</h3>
+                <h3>ملف ${fileCount}: <span class="fileInfo">${fileDiv.dataset.fileType} - ${fileDiv.dataset.fileName}</span> — <span class="pageCount">${pageCount}</span> صفحة</h3>
                 <div class="options" style="display: none;">
                     <label for="pageCount">عدد الصفحات:</label>
                     <input type="text" id="pageCount" value="${pageCount}" lang="en"><br><br>
@@ -509,6 +537,7 @@
             filesDiv.appendChild(fileDiv);
             fileCount++;
             renumberFiles();
+            updateFileHeader(fileDiv);
 
             // Hover to show options for this file only
             fileDiv.addEventListener('mouseenter', function() {
