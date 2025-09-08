@@ -222,6 +222,7 @@
 
     filesDiv.appendChild(fileDiv);
     fileCount++;
+    renumberFiles();
 
     // Hover to show options for this file only
     fileDiv.addEventListener('mouseenter', function() {
@@ -266,6 +267,18 @@
             var fileDiv = button.parentElement;
             fileDiv.remove();
             calculateTotalPrice(); // Removing file should affect total price
+            renumberFiles();
+        }
+
+        function renumberFiles() {
+            var files = document.querySelectorAll('#files .file');
+            files.forEach(function(fileDiv, index) {
+                var header = fileDiv.querySelector('h3');
+                if (!header) return;
+                var pageSpan = fileDiv.querySelector('.pageCount');
+                var pageText = pageSpan ? pageSpan.textContent : '0';
+                header.innerHTML = `ملف ${index + 1}: <span class="pageCount">${pageText}</span> صفحة`;
+            });
         }
 
         function calculatePrice(button) {
@@ -495,6 +508,7 @@
 
             filesDiv.appendChild(fileDiv);
             fileCount++;
+            renumberFiles();
 
             // Hover to show options for this file only
             fileDiv.addEventListener('mouseenter', function() {
