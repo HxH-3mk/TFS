@@ -177,11 +177,7 @@
             });
         }
 
-        function toggleOptions(button) {
-            var fileDiv = button.parentElement;
-            var optionsDiv = fileDiv.querySelector(".options");
-            optionsDiv.style.display = optionsDiv.style.display === "none" ? "block" : "none";
-        }
+        // toggleOptions removed; options are shown on hover now
 
         function addFile() {
             
@@ -197,7 +193,6 @@
 
     fileDiv.innerHTML = `
         <h3>ملف ${fileCount}: <span class="pageCount">0</span> صفحة</h3>
-        <button onclick="toggleOptions(this)">عرض/إخفاء الخيارات</button>
         <div class="options" style="display: none;">
             <label for="pageCount">عدد الصفحات:</label>
             <input type="text" id="pageCount" value="0" lang="en"><br><br>
@@ -228,6 +223,15 @@
     filesDiv.appendChild(fileDiv);
     fileCount++;
 
+    // Hover to show options for this file only
+    fileDiv.addEventListener('mouseenter', function() {
+        document.querySelectorAll('.file .options').forEach(function(opt){ opt.style.display = 'none'; });
+        fileDiv.querySelector('.options').style.display = 'block';
+    });
+    fileDiv.addEventListener('mouseleave', function() {
+        fileDiv.querySelector('.options').style.display = 'none';
+    });
+
     // تطبيق إجبار استخدام الأرقام الإنجليزية
     forceEnglishNumbers(fileDiv.querySelector("#pageCount"));
     forceEnglishNumbers(fileDiv.querySelector("#pricePerPage"));
@@ -245,6 +249,9 @@
         var pageCount = this.value;
         fileDiv.querySelector(".pageCount").textContent = pageCount;
     });
+
+    setupAutoRecalc(fileDiv);
+    calculatePriceForFile(fileDiv);
 }
 
 
@@ -263,6 +270,10 @@
 
         function calculatePrice(button) {
             var fileDiv = button.parentElement;
+            calculatePriceForFile(fileDiv);
+        }
+
+        function calculatePriceForFile(fileDiv) {
             var pageCount = parseInt(fileDiv.querySelector("#pageCount").value);
             var pricePerPage = parseFloat(fileDiv.querySelector("#pricePerPage").value);
             var doubleSided = fileDiv.querySelector("#doubleSided").checked;
@@ -271,11 +282,16 @@
             var sides = parseInt(fileDiv.querySelector("#sides").value);
             var copyCount = parseInt(fileDiv.querySelector("#copyCount").value);
 
+            if (isNaN(pageCount)) pageCount = 0;
+            if (isNaN(pricePerPage) || pricePerPage === 0) pricePerPage = 1; // avoid divide by zero
+            if (isNaN(sides) || (sides !== 1 && sides !== 2)) sides = 1;
+            if (isNaN(copyCount) || copyCount < 1) copyCount = 1;
+
             if (doubleSided) {
                 pageCount /= 2;
             }
 
-            var wirePrice = withWire ? (sides === 1 ? pageCount <= 50 ? 5 : (pageCount / 10) : pageCount <= 100 ? 5 : (pageCount / 20)) : 0;
+            var wirePrice = withWire ? (sides === 1 ? (pageCount <= 50 ? 5 : (pageCount / 10)) : (pageCount <= 100 ? 5 : (pageCount / 20))) : 0;
             var gluePrice = withGlue ? 5 : 0;
             var pricePerPageForOneCopy = pageCount / pricePerPage;
             var totalPriceForAllCopies = (pricePerPageForOneCopy + wirePrice + gluePrice) * copyCount;
@@ -286,6 +302,23 @@
             fileDiv.querySelector(".totalPrice span").textContent = totalPriceForAllCopies.toFixed(2) + " ريال سعودي";
 
             calculateTotalPrice();
+        }
+
+        function setupAutoRecalc(fileDiv) {
+            var inputs = [
+                fileDiv.querySelector("#pageCount"),
+                fileDiv.querySelector("#pricePerPage"),
+                fileDiv.querySelector("#doubleSided"),
+                fileDiv.querySelector("#withWire"),
+                fileDiv.querySelector("#withGlue"),
+                fileDiv.querySelector("#sides"),
+                fileDiv.querySelector("#copyCount")
+            ];
+            inputs.forEach(function(el) {
+                if (!el) return;
+                var evt = (el.tagName === 'INPUT' && el.type === 'text') ? 'input' : 'change';
+                el.addEventListener(evt, function() { calculatePriceForFile(fileDiv); });
+            });
         }
 
         function calculateTotalPrice() {
@@ -433,7 +466,6 @@
 
             fileDiv.innerHTML = `
                 <h3>ملف ${fileCount}: <span class="pageCount">${pageCount}</span> صفحة</h3>
-                <button onclick="toggleOptions(this)">عرض/إخفاء الخيارات</button>
                 <div class="options" style="display: none;">
                     <label for="pageCount">عدد الصفحات:</label>
                     <input type="text" id="pageCount" value="${pageCount}" lang="en"><br><br>
@@ -464,6 +496,15 @@
             filesDiv.appendChild(fileDiv);
             fileCount++;
 
+            // Hover to show options for this file only
+            fileDiv.addEventListener('mouseenter', function() {
+                document.querySelectorAll('.file .options').forEach(function(opt){ opt.style.display = 'none'; });
+                fileDiv.querySelector('.options').style.display = 'block';
+            });
+            fileDiv.addEventListener('mouseleave', function() {
+                fileDiv.querySelector('.options').style.display = 'none';
+            });
+
             // Apply force English numbers
             forceEnglishNumbers(fileDiv.querySelector("#pageCount"));
             forceEnglishNumbers(fileDiv.querySelector("#pricePerPage"));
@@ -477,6 +518,9 @@
                 var pageCountVal = this.value;
                 fileDiv.querySelector(".pageCount").textContent = pageCountVal;
             });
+
+            setupAutoRecalc(fileDiv);
+            calculatePriceForFile(fileDiv);
         }
     </script>
 </body>
