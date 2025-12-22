@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>A3 Booklet Creator</title>
+    <script src="https://unpkg.com/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
+    <style>
+        :root {
+            --primary: #2563eb;
+            --success: #16a34a;
+            --bg: #f8fafc;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background-color: var(--bg);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            min-height: 100vh;
+            margin: 0;
+        }
+        .container {
+            background: white;
+            padding: 2rem;
+            border-radius: 12px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            text-align: center;
+            width: 90%;
+            max-width: 500px;
+        }
+        #drop-zone {
+            border: 2px dashed #cbd5e1;
+            border-radius: 8px;
+            padding: 40px 20px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            background: #ffffff;
+            margin: 20px 0;
+        }
+        #drop-zone.dragover {
+            border-color: var(--primary);
+            background: #eff6ff;
+            transform: scale(1.02);
+        }
+        .status {
+            margin-top: 1rem;
+            font-size: 0.9rem;
+            color: #64748b;
+        }
+        #download-btn {
+            display: none;
+            background-color: var(--success);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 1rem;
+            width: 100%;
+        }
+        #download-btn:hover { background-color: #15803d; }
+        h1 { color: #1e293b; margin-bottom: 0.5rem; }
+        p { color: #64748b; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1>Booklet Maker</h1>
+        <p>Drop a 4-page A4 PDF to create an A3 booklet spread.</p>
+
+        <div id="drop-zone">
+            <strong>Drag & Drop PDF here</strong><br>
+            <span style="font-size: 0.8rem;">or click to browse</span>
+        </div>
+        
+        <input type="file" id="file-input" accept="application/pdf" style="display: none;">
+        
+        <div id="status" class="status">Ready for upload</div>
+        <button id="download-btn">Download A3 Booklet</button>
+    </div>
+
+    <script>
+        const { PDFDocument, rgb } = PDFLib;
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+        const status = document.getElementById('status');
+        const downloadBtn = document.getElementById('download-btn');
+        let processedPdfBytes = null;
+
+        // --- Event Listeners ---
+        
+        dropZone.addEventListener('click', () => fileInput.click());
+
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.classList.add('dragover');
+        });
+
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.classList.remove('dragover');
+        });
+
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.classList.remove('dragover');
+            const file = e.dataTransfer.files[0];
+            if (file) processPDF(file);
+        });
+
+        fileInput.addEventListener('change', (e) => {
+            if (e.target.files[0]) processPDF(e.target.files[0]);
+        });
+
+        // --- Logic ---
+
+        async function processPDF(file) {
+            if (file.type !== "application/pdf") {
+                updateStatus("Error: Please provide a PDF file.", true);
+                return;
+            }
+
+            updateStatus("Processing...");
+
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const srcDoc = await PDFDocument.load(arrayBuffer);
+                const pageCount = srcDoc.getPageCount();
+
+                if (pageCount !== 4) {
+                    updateStatus(`Error: PDF must have 4 pages (Found ${pageCount}).`, true);
+                    return;
+                }
+
+                // A3 Dimensions in points (Landscape)
+                const a3Width = 1190.55;
+                const a3Height = 841.89;
+                const midX = a3Width / 2;
+
+                const outDoc = await PDFDocument.create();
+                
+                // Logic: [(0, 3), (2, 1)] -> Front/Back and Inside spread
+                const layout = [[0, 3], [2, 1]];
+
+                for (const [leftIdx, rightIdx] of layout) {
+                    const page = outDoc.addPage([a3Width, a3Height]);
+                    
+                    // Embed pages
+                    const [leftPage] = await outDoc.embedPdf(srcDoc, [leftIdx]);
+                    const [rightPage] = await outDoc.embedPdf(srcDoc, [rightIdx]);
+
+                    // Draw Left
+                    page.drawPage(leftPage, { x: 0, y: 0, width: midX, height: a3Height });
+
+                    // Draw Right
+                    page.drawPage(rightPage, { x: midX, y: 0, width: midX, height: a3Height });
+
+                    // Draw Middle Line
+                    page.drawLine({
+                        start: { x: midX, y: 0 },
+                        end: { x: midX, y: a3Height },
+                        thickness: 1,
+                        color: rgb(0, 0, 0),
+                    });
+                }
+
+                processedPdfBytes = await outDoc.save();
+                updateStatus("Success! Booklet generated.");
+                downloadBtn.style.display = "block";
+
+            } catch (err) {
+                console.error(err);
+                updateStatus("An error occurred while processing.", true);
+            }
+        }
+
+        function updateStatus(msg, isError = false) {
+            status.innerText = msg;
+            status.style.color = isError ? "#dc2626" : "#64748b";
+            if (isError) downloadBtn.style.display = "none";
+        }
+
+        downloadBtn.onclick = () => {
+            const blob = new Blob([processedPdfBytes], { type: "application/pdf" });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement("a");
+            a.href = url;
+            a.download = "A3_Booklet.pdf";
+            a.click();
+            URL.revokeObjectURL(url);
+        };
+    </script>
+</body>
+</html>
