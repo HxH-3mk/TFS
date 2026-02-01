@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html dir="rtl">
 <head>
@@ -23,13 +22,12 @@
             text-align: right;
             animation: fadeIn 0.5s ease-in-out;
             transition: box-shadow 0.2s ease;
-              margin-top: 20px;
-  margin-bottom: 20px;
-  margin-right: 20px;
-  margin-left: 20px;
+            margin: 20px;
+            width: 90%;
+            max-width: 800px;
         }
         h1 {
-            color: #ffffff; /* White text for headings in Dark Mode */
+            color: #ffffff;
             font-size: 24px;
             text-align: center;
         }
@@ -39,44 +37,66 @@
             border: none;
             padding: 10px 20px;
             margin: 10px;
-            border-radius: 8px; /* Rounded corners for buttons */
+            border-radius: 8px;
             cursor: pointer;
             transition: background-color 0.3s, box-shadow 0.2s ease;
         }
         button:hover {
             background-color: #0056b3;
-            box-shadow: 0 0 10px rgba(58, 150, 255, 0.8); /* Neon effect on hover */
+            box-shadow: 0 0 10px rgba(58, 150, 255, 0.8);
         }
         .file {
-            border: 1px solid #444; /* Adjusted border color for Dark Mode */
-            border-radius: 16px; /* Rounded corners for file elements */
-            padding: 10px;
+            border: 1px solid #444;
+            border-radius: 16px;
+            padding: 15px;
             margin: 10px 0;
-            background-color: #222222; /* Dark background for file elements */
-            color: #ffffff; /* White text color for content */
+            background-color: #222222;
+            color: #ffffff;
         }
+        
+        /* --- التنسيق الجديد للمربع البارز في اليسار --- */
+        .file-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 1px solid #444;
+            padding-bottom: 10px;
+        }
+        .page-badge {
+            background-color: #007bff;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 10px;
+            font-weight: bold;
+            box-shadow: 0 0 8px rgba(0, 123, 255, 0.4);
+            font-size: 0.9em;
+            min-width: 80px;
+            text-align: center;
+        }
+        /* ----------------------------------------- */
+
         label, p {
-            color: #ffffff; /* White text color for labels and paragraphs in Dark Mode */
+            color: #ffffff;
         }
         input, select {
-            background-color: #444; /* Darker background for input fields */
-            color: #ffffff; /* White text color for better visibility */
-            border: 1px solid #666; /* Border color for input fields */
+            background-color: #444;
+            color: #ffffff;
+            border: 1px solid #666;
             padding: 5px;
-            border-radius: 8px; /* Rounded corners for input and select fields */
+            border-radius: 8px;
         }
         input[type="number"], input[type="text"] {
-            direction: ltr; /* Set direction to left-to-right */
+            direction: ltr;
         }
         input[type="checkbox"] {
-            transform: scale(1.5); /* Increase size of checkboxes */
-            border-radius: 4px; /* Rounded corners for a softer look */
+            transform: scale(1.5);
             margin-right: 10px;
         }
         .price, .gluePrice, .wirePrice, .totalPrice {
-            color: #00bfff; /* Bright blue for prices to stand out in Dark Mode */
+            color: #00bfff;
         }
-        /* Neon effect following the mouse */
+        
         body::after {
             content: '';
             position: absolute;
@@ -89,7 +109,6 @@
             z-index: -1;
         }
 
-        /* New styles for file drop area */
         #fileDropArea {
             border: 2px dashed #007bff;
             border-radius: 16px;
@@ -108,36 +127,35 @@
     <div id="container">
         <h1>حساب سعر الطباعة</h1>
 
-        <!-- New file drop area -->
         <div id="fileDropArea">اسحب الملفات هنا</div>
 
         <div id="defaultOptions" style="margin-bottom: 20px;">
-    <h2>الإعدادات الافتراضية</h2>
-    <label for="defaultPricePerPage">سعر الورق الافتراضي مقابل عدد الصفحات (بالريال):</label>
-    <input type="text" id="defaultPricePerPage" value="10" lang="en"><br><br>
-    <label>كل ورقتين بورقة واحدة؟</label>
-    <input type="checkbox" id="defaultDoubleSided"><br><br>
-    <label>بسلك؟</label>
-    <input type="checkbox" id="defaultWithWire"><br><br>
-    <label>لصق؟</label>
-    <input type="checkbox" id="defaultWithGlue"><br><br>
-    <label for="defaultSides">وجه واحد أم وجهين؟</label>
-    <select id="defaultSides" lang="en">
-        <option value="1">وجه واحد</option>
-        <option value="2">وجهين</option>
-    </select><br><br>
-    <label for="defaultCopyCount">عدد النسخ الافتراضي:</label>
-    <input type="text" id="defaultCopyCount" value="1" lang="en"><br><br>
-    <button onclick="applyDefaults()">تطبيق الإعدادات الافتراضية لكل الملفات</button>
-</div>
-        <div id="files">
-            <!-- Files will be added here -->
+            <h2>الإعدادات الافتراضية</h2>
+            <label for="defaultPricePerPage">سعر الورق الافتراضي مقابل عدد الصفحات (بالريال):</label>
+            <input type="text" id="defaultPricePerPage" value="10" lang="en"><br><br>
+            <label>كل ورقتين بورقة واحدة؟</label>
+            <input type="checkbox" id="defaultDoubleSided"><br><br>
+            <label>بسلك؟</label>
+            <input type="checkbox" id="defaultWithWire"><br><br>
+            <label>لصق؟</label>
+            <input type="checkbox" id="defaultWithGlue"><br><br>
+            <label for="defaultSides">وجه واحد أم وجهين؟</label>
+            <select id="defaultSides" lang="en">
+                <option value="1">وجه واحد</option>
+                <option value="2">وجهين</option>
+            </select><br><br>
+            <label for="defaultCopyCount">عدد النسخ الافتراضي:</label>
+            <input type="text" id="defaultCopyCount" value="1" lang="en"><br><br>
+            <button onclick="applyDefaults()">تطبيق الإعدادات الافتراضية لكل الملفات</button>
         </div>
+        <div id="files">
+            </div>
         <button onclick="addFile()">إضافة ملف جديد</button>
         <button onclick="calculateTotalPrice()">عرض مجموع السعر</button>
         <button onclick="resetData()">إعادة تصفير البيانات</button>
         <p id="totalPrice">مجموع السعر: <span id="totalPriceValue">0</span> ريال سعودي</p>
     </div>
+
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.10.377/pdf.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.5.0/mammoth.browser.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
@@ -152,18 +170,15 @@
             }
         });
 
-        // Function to force English number input
         function forceEnglishNumbers(inputElement) {
             inputElement.addEventListener('input', function() {
-                // Convert Arabic numbers to English numbers
                 this.value = this.value.replace(/[٠١٢٣٤٥٦٧٨٩]/g, function(d) {
                     return '0123456789'['٠١٢٣٤٥٦٧٨٩'.indexOf(d)];
                 });
             });
         }
 
-        // Original JavaScript functions, kept exactly as they were to maintain functionality
-        var fileCount = 1; // File count initialized to 1 on load
+        var fileCount = 1;
 
         function evaluateExpression(inputElement) {
             inputElement.addEventListener('change', function () {
@@ -177,339 +192,22 @@
             });
         }
 
-        // toggleOptions removed; options are shown on hover now
-
         function addFile() {
-            
-            // Collapse all open options before adding a new file
             var allOptions = document.querySelectorAll(".options");
-            allOptions.forEach(function(option) {
-                option.style.display = "none";
-            });
+            allOptions.forEach(function(option) { option.style.display = "none"; });
             
-    var filesDiv = document.getElementById("files");
-    var fileDiv = document.createElement("div");
-    fileDiv.classList.add("file", "fadeIn");
-    fileDiv.dataset.fileType = 'يدوي';
-    fileDiv.dataset.fileName = '—';
-
-    fileDiv.innerHTML = `
-        <h3>ملف ${fileCount}: <span class="fileInfo">يدوي - —</span> — <span class="pageCount">0</span> صفحة</h3>
-        <div class="options" style="display: none;">
-            <label for="pageCount">عدد الصفحات:</label>
-            <input type="text" id="pageCount" value="0" lang="en"><br><br>
-            <label for="pricePerPage">سعر الورق مقابل عدد الصفحات (بالريال):</label>
-            <input type="text" id="pricePerPage" value="10" lang="en"><br><br>
-            <label>كل ورقتين بورقة واحدة؟</label>
-            <input type="checkbox" id="doubleSided"><br><br>
-            <label>بسلك؟</label>
-            <input type="checkbox" id="withWire"><br><br>
-            <label>لصق؟</label>
-            <input type="checkbox" id="withGlue"><br><br>
-            <label>وجه واحد أم وجهين؟</label>
-            <select id="sides" lang="en">
-                <option value="1">وجه واحد</option>
-                <option value="2">وجهين</option>
-            </select><br><br>
-            <label for="copyCount">عدد النسخ:</label>
-            <input type="text" id="copyCount" value="1" lang="en"><br><br>
-        </div>
-        <button onclick="calculatePrice(this)">حساب السعر</button>
-        <button onclick="removeFile(this)">حذف</button>
-        <p>سعر الورق: <span class="price">0 ريال سعودي</span></p>
-        <p>سعر السلك: <span class="wirePrice">0 ريال سعودي</span></p>
-        <p>سعر اللصق: <span class="gluePrice">0 ريال سعودي</span></p>
-        <p class="totalPrice">السعر الإجمالي: <span>0 ريال سعودي</span></p>
-    `;
-
-    filesDiv.appendChild(fileDiv);
-    fileCount++;
-    renumberFiles();
-    updateFileHeader(fileDiv);
-
-    // Hover to show options for this file only
-    fileDiv.addEventListener('mouseenter', function() {
-        document.querySelectorAll('.file .options').forEach(function(opt){ opt.style.display = 'none'; });
-        fileDiv.querySelector('.options').style.display = 'block';
-    });
-    fileDiv.addEventListener('mouseleave', function() {
-        fileDiv.querySelector('.options').style.display = 'none';
-    });
-
-    // تطبيق إجبار استخدام الأرقام الإنجليزية
-    forceEnglishNumbers(fileDiv.querySelector("#pageCount"));
-    forceEnglishNumbers(fileDiv.querySelector("#pricePerPage"));
-    forceEnglishNumbers(fileDiv.querySelector("#copyCount"));
-
-    // تقييم التعبير المكتوب في الحقول
-    evaluateExpression(fileDiv.querySelector("#pageCount"));
-    evaluateExpression(fileDiv.querySelector("#pricePerPage"));
-    evaluateExpression(fileDiv.querySelector("#copyCount"));
-
-/* evaluateExpression moved to global scope */
-
-
-    fileDiv.querySelector("#pageCount").addEventListener("change", function() {
-        var pageCount = this.value;
-        fileDiv.querySelector(".pageCount").textContent = pageCount;
-    });
-
-    setupAutoRecalc(fileDiv);
-    calculatePriceForFile(fileDiv);
-}
-
-
-        function resetData() {
-            var filesDiv = document.getElementById("files");
-            filesDiv.innerHTML = ''; // Clear all files
-            fileCount = 1; // Reset file count
-            document.getElementById("totalPriceValue").textContent = '0'; // Reset total price
-        }
-
-        function removeFile(button) {
-            var fileDiv = button.parentElement;
-            fileDiv.remove();
-            calculateTotalPrice(); // Removing file should affect total price
-            renumberFiles();
-        }
-
-        function renumberFiles() {
-            var files = document.querySelectorAll('#files .file');
-            files.forEach(function(fileDiv, index) {
-                updateFileHeader(fileDiv, index);
-            });
-        }
-
-        function updateFileHeader(fileDiv, indexOverride) {
-            var header = fileDiv.querySelector('h3');
-            if (!header) return;
-            var allFiles = Array.from(document.querySelectorAll('#files .file'));
-            var index = (typeof indexOverride === 'number') ? indexOverride : allFiles.indexOf(fileDiv);
-            var fileIndex = (index >= 0 ? index + 1 : 1);
-            var pageSpan = fileDiv.querySelector('.pageCount');
-            var pageText = pageSpan ? pageSpan.textContent : '0';
-            var fileType = fileDiv.dataset.fileType || 'يدوي';
-            var fileName = fileDiv.dataset.fileName || 'بدون اسم';
-            header.innerHTML = `ملف ${fileIndex}: <span class="fileInfo">${fileType} - ${fileName}</span> — <span class="pageCount">${pageText}</span> صفحة`;
-        }
-
-        function calculatePrice(button) {
-            var fileDiv = button.parentElement;
-            calculatePriceForFile(fileDiv);
-        }
-
-        function calculatePriceForFile(fileDiv) {
-            var pageCount = parseInt(fileDiv.querySelector("#pageCount").value);
-            var pricePerPage = parseFloat(fileDiv.querySelector("#pricePerPage").value);
-            var doubleSided = fileDiv.querySelector("#doubleSided").checked;
-            var withWire = fileDiv.querySelector("#withWire").checked;
-            var withGlue = fileDiv.querySelector("#withGlue").checked;
-            var sides = parseInt(fileDiv.querySelector("#sides").value);
-            var copyCount = parseInt(fileDiv.querySelector("#copyCount").value);
-
-            if (isNaN(pageCount)) pageCount = 0;
-            if (isNaN(pricePerPage) || pricePerPage === 0) pricePerPage = 1; // avoid divide by zero
-            if (isNaN(sides) || (sides !== 1 && sides !== 2)) sides = 1;
-            if (isNaN(copyCount) || copyCount < 1) copyCount = 1;
-
-            if (doubleSided) {
-                pageCount /= 2;
-            }
-
-            var wirePrice = withWire ? (sides === 1 ? (pageCount <= 50 ? 5 : (pageCount / 10)) : (pageCount <= 100 ? 5 : (pageCount / 20))) : 0;
-            var gluePrice = withGlue ? 5 : 0;
-            var pricePerPageForOneCopy = pageCount / pricePerPage;
-            var totalPriceForAllCopies = (pricePerPageForOneCopy + wirePrice + gluePrice) * copyCount;
-
-            fileDiv.querySelector(".price").textContent = pricePerPageForOneCopy.toFixed(2) + " ريال سعودي";
-            fileDiv.querySelector(".wirePrice").textContent = wirePrice.toFixed(2) + " ريال سعودي";
-            fileDiv.querySelector(".gluePrice").textContent = gluePrice.toFixed(2) + " ريال سعودي";
-            fileDiv.querySelector(".totalPrice span").textContent = totalPriceForAllCopies.toFixed(2) + " ريال سعودي";
-
-            calculateTotalPrice();
-        }
-
-        function setupAutoRecalc(fileDiv) {
-            var inputs = [
-                fileDiv.querySelector("#pageCount"),
-                fileDiv.querySelector("#pricePerPage"),
-                fileDiv.querySelector("#doubleSided"),
-                fileDiv.querySelector("#withWire"),
-                fileDiv.querySelector("#withGlue"),
-                fileDiv.querySelector("#sides"),
-                fileDiv.querySelector("#copyCount")
-            ];
-            inputs.forEach(function(el) {
-                if (!el) return;
-                var evt = (el.tagName === 'INPUT' && el.type === 'text') ? 'input' : 'change';
-                el.addEventListener(evt, function() { calculatePriceForFile(fileDiv); });
-            });
-        }
-
-        function calculateTotalPrice() {
-            var files = document.querySelectorAll(".totalPrice span");
-            var totalPrice = 0;
-            for (var i = 0; i < files.length; i++) {
-                totalPrice += parseFloat(files[i].textContent);
-            }
-            document.getElementById("totalPriceValue").textContent = totalPrice.toFixed(2);
-        }
-
-        function applyDefaults() {
-    var defaultPricePerPage = document.getElementById("defaultPricePerPage").value;
-    var defaultDoubleSided = document.getElementById("defaultDoubleSided").checked;
-    var defaultWithWire = document.getElementById("defaultWithWire").checked;
-    var defaultWithGlue = document.getElementById("defaultWithGlue").checked;
-    var defaultSides = document.getElementById("defaultSides").value;
-    var defaultCopyCount = document.getElementById("defaultCopyCount").value;
-
-    var files = document.querySelectorAll(".file");
-    files.forEach(function(file) {
-        file.querySelector("#pricePerPage").value = defaultPricePerPage;
-        file.querySelector("#doubleSided").checked = defaultDoubleSided;
-        file.querySelector("#withWire").checked = defaultWithWire;
-        file.querySelector("#withGlue").checked = defaultWithGlue;
-        file.querySelector("#sides").value = defaultSides;
-        file.querySelector("#copyCount").value = defaultCopyCount;
-        
-        // Calculate price for each file after applying defaults
-        calculatePrice(file.querySelector('button[onclick="calculatePrice(this)"]'));
-    });
-}
-
-        // Handle file drop
-        const fileDropArea = document.getElementById('fileDropArea');
-        fileDropArea.addEventListener('dragover', (event) => {
-            event.preventDefault();
-            fileDropArea.style.backgroundColor = 'rgba(0, 123, 255, 0.2)';
-        });
-
-        fileDropArea.addEventListener('dragleave', () => {
-            fileDropArea.style.backgroundColor = 'transparent';
-        });
-
-        fileDropArea.addEventListener('drop', (event) => {
-            event.preventDefault();
-            fileDropArea.style.backgroundColor = 'transparent';
-            const files = event.dataTransfer.files;
-            const seen = new Set();
-            Array.from(files).forEach(file => {
-                const key = (file.name || '') + ':' + (file.size || 0) + ':' + (file.lastModified || 0);
-                if (seen.has(key)) { return; }
-                seen.add(key);
-                const name = (file.name || '').toLowerCase();
-                if (file.type === 'application/pdf' || /\.pdf$/i.test(name)) {
-                    handlePDF(file);
-                } else if (['image/png', 'image/jpeg', 'image/jpg'].includes(file.type) || /\.(png|jpe?g)$/i.test(name)) {
-                    addFileWithPageCount(1, file); // Each image is considered as one page
-                } else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || /\.docx$/i.test(name)) {
-                    handleWord(file);
-                } else if (file.type === 'application/vnd.openxmlformats-officedocument.presentationml.presentation' || /\.pptx$/i.test(name)) {
-                    handlePPTX(file);
-                } else {
-                    alert('Unsupported file type. Please drop a PDF, image, Word (.docx), or PPTX file.');
-                }
-            });
-        });
-
-        function handlePDF(file) {
-            const reader = new FileReader();
-            reader.onload = function() {
-                const typedarray = new Uint8Array(this.result);
-                pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
-                    const pageCount = pdf.numPages;
-                    addFileWithPageCount(pageCount, file);
-                });
-            };
-            reader.readAsArrayBuffer(file);
-        }
-
-        function handleWord(file) {
-            const reader = new FileReader();
-            reader.onload = function() {
-                const arrayBuffer = this.result;
-                let added = false;
-                const safeAdd = (n) => { if (added) return; added = true; addFileWithPageCount(n, file); };
-                JSZip.loadAsync(arrayBuffer).then(function(zip) {
-                    const appXmlFile = zip.file('docProps/app.xml');
-                    if (appXmlFile) {
-                        appXmlFile.async('text').then(function(xmlText) {
-                            try {
-                                const parser = new DOMParser();
-                                const xmlDoc = parser.parseFromString(xmlText, 'application/xml');
-                                const pagesNode = xmlDoc.getElementsByTagName('Pages')[0];
-                                const pages = pagesNode ? parseInt(pagesNode.textContent, 10) : NaN;
-                                if (!isNaN(pages) && pages > 0) {
-                                    safeAdd(pages);
-                                } else {
-                                    fallbackEstimateWithMammoth(arrayBuffer, safeAdd);
-                                }
-                            } catch (e) {
-                                fallbackEstimateWithMammoth(arrayBuffer, safeAdd);
-                            }
-                        }).catch(function() {
-                            fallbackEstimateWithMammoth(arrayBuffer, safeAdd);
-                        });
-                    } else {
-                        fallbackEstimateWithMammoth(arrayBuffer, safeAdd);
-                    }
-                }).catch(function() {
-                    fallbackEstimateWithMammoth(arrayBuffer, safeAdd);
-                });
-            };
-            reader.readAsArrayBuffer(file);
-        }
-
-        function fallbackEstimateWithMammoth(arrayBuffer, addOnce) {
-            mammoth.extractRawText({ arrayBuffer: arrayBuffer }).then(function(result) {
-                const text = (result && result.value) ? result.value.trim() : '';
-                const wordCount = text ? text.split(/\s+/).length : 0;
-                const pageCount = Math.max(1, Math.ceil(wordCount / 300));
-                (addOnce || addFileWithPageCount)(pageCount, null);
-            }).catch(function() {
-                (addOnce || addFileWithPageCount)(1, null);
-            });
-        }
-
-        function handlePPTX(file) {
-            const reader = new FileReader();
-            reader.onload = function() {
-                const zip = new JSZip();
-                zip.loadAsync(this.result).then(function(zip) {
-                    const slideCount = Object.keys(zip.files).filter(fileName => fileName.match(/ppt\/slides\/slide\d+\.xml/)).length;
-                    addFileWithPageCount(slideCount, file);
-                });
-            };
-            reader.readAsArrayBuffer(file);
-        }
-
-        function addFileWithPageCount(pageCount, srcFile) {
-            pageCount = Math.max(1, Math.round(Number(pageCount) || 0));
             var filesDiv = document.getElementById("files");
             var fileDiv = document.createElement("div");
             fileDiv.classList.add("file", "fadeIn");
-            if (srcFile) {
-                var name = srcFile.name || 'بدون اسم';
-                var type = (srcFile.type || '').toLowerCase();
-                var ext = name.split('.').pop().toLowerCase();
-                var typeLabel = 'ملف';
-                if (type.includes('pdf') || ext === 'pdf') typeLabel = 'PDF';
-                else if (type.includes('word') || ext === 'docx') typeLabel = 'DOCX';
-                else if (type.includes('presentation') || ext === 'pptx') typeLabel = 'PPTX';
-                else if (type.includes('png') || ext === 'png') typeLabel = 'PNG';
-                else if (type.includes('jpeg') || type.includes('jpg') || ext === 'jpg' || ext === 'jpeg') typeLabel = 'JPG';
-                fileDiv.dataset.fileType = typeLabel;
-                fileDiv.dataset.fileName = name;
-            } else {
-                fileDiv.dataset.fileType = 'يدوي';
-                fileDiv.dataset.fileName = '—';
-            }
+            fileDiv.dataset.fileType = 'يدوي';
+            fileDiv.dataset.fileName = '—';
 
+            // الهيكل الأساسي فارغ وسيتم تعبئته بواسطة updateFileHeader
             fileDiv.innerHTML = `
-                <h3>ملف ${fileCount}: <span class="fileInfo">${fileDiv.dataset.fileType} - ${fileDiv.dataset.fileName}</span> — <span class="pageCount">${pageCount}</span> صفحة</h3>
+                <h3 class="file-header"></h3>
                 <div class="options" style="display: none;">
                     <label for="pageCount">عدد الصفحات:</label>
-                    <input type="text" id="pageCount" value="${pageCount}" lang="en"><br><br>
+                    <input type="text" id="pageCount" value="0" lang="en"><br><br>
                     <label for="pricePerPage">سعر الورق مقابل عدد الصفحات (بالريال):</label>
                     <input type="text" id="pricePerPage" value="10" lang="en"><br><br>
                     <label>كل ورقتين بورقة واحدة؟</label>
@@ -537,9 +235,7 @@
             filesDiv.appendChild(fileDiv);
             fileCount++;
             renumberFiles();
-            updateFileHeader(fileDiv);
 
-            // Hover to show options for this file only
             fileDiv.addEventListener('mouseenter', function() {
                 document.querySelectorAll('.file .options').forEach(function(opt){ opt.style.display = 'none'; });
                 fileDiv.querySelector('.options').style.display = 'block';
@@ -548,22 +244,220 @@
                 fileDiv.querySelector('.options').style.display = 'none';
             });
 
-            // Apply force English numbers
             forceEnglishNumbers(fileDiv.querySelector("#pageCount"));
             forceEnglishNumbers(fileDiv.querySelector("#pricePerPage"));
             forceEnglishNumbers(fileDiv.querySelector("#copyCount"));
-            // Evaluate expression
             evaluateExpression(fileDiv.querySelector("#pageCount"));
             evaluateExpression(fileDiv.querySelector("#pricePerPage"));
             evaluateExpression(fileDiv.querySelector("#copyCount"));
 
             fileDiv.querySelector("#pageCount").addEventListener("change", function() {
-                var pageCountVal = this.value;
-                fileDiv.querySelector(".pageCount").textContent = pageCountVal;
+                updateFileHeader(fileDiv);
+                calculatePriceForFile(fileDiv);
             });
 
             setupAutoRecalc(fileDiv);
             calculatePriceForFile(fileDiv);
+        }
+
+        function resetData() {
+            var filesDiv = document.getElementById("files");
+            filesDiv.innerHTML = '';
+            fileCount = 1;
+            document.getElementById("totalPriceValue").textContent = '0';
+        }
+
+        function removeFile(button) {
+            var fileDiv = button.parentElement;
+            fileDiv.remove();
+            calculateTotalPrice();
+            renumberFiles();
+        }
+
+        function renumberFiles() {
+            var files = document.querySelectorAll('#files .file');
+            files.forEach(function(fileDiv, index) {
+                updateFileHeader(fileDiv, index);
+            });
+        }
+
+        function updateFileHeader(fileDiv, indexOverride) {
+            var header = fileDiv.querySelector('.file-header');
+            if (!header) return;
+            var allFiles = Array.from(document.querySelectorAll('#files .file'));
+            var index = (typeof indexOverride === 'number') ? indexOverride : allFiles.indexOf(fileDiv);
+            var fileIndex = (index >= 0 ? index + 1 : 1);
+            
+            var pageInput = fileDiv.querySelector('#pageCount');
+            var pageText = pageInput ? pageInput.value : '0';
+            var fileType = fileDiv.dataset.fileType || 'يدوي';
+            var fileName = fileDiv.dataset.fileName || 'بدون اسم';
+            
+            // تحديث التصميم ليحتوي على المربع البارز في اليسار
+            header.innerHTML = `
+                <span>ملف ${fileIndex}: <span class="fileInfo">${fileType} - ${fileName}</span></span>
+                <span class="page-badge"><span class="pageCount">${pageText}</span> صفحة</span>
+            `;
+        }
+
+        function calculatePrice(button) {
+            var fileDiv = button.parentElement;
+            calculatePriceForFile(fileDiv);
+        }
+
+        function calculatePriceForFile(fileDiv) {
+            var pageCount = parseInt(fileDiv.querySelector("#pageCount").value);
+            var pricePerPage = parseFloat(fileDiv.querySelector("#pricePerPage").value);
+            var doubleSided = fileDiv.querySelector("#doubleSided").checked;
+            var withWire = fileDiv.querySelector("#withWire").checked;
+            var withGlue = fileDiv.querySelector("#withGlue").checked;
+            var sides = parseInt(fileDiv.querySelector("#sides").value);
+            var copyCount = parseInt(fileDiv.querySelector("#copyCount").value);
+
+            if (isNaN(pageCount)) pageCount = 0;
+            if (isNaN(pricePerPage) || pricePerPage === 0) pricePerPage = 1;
+            if (isNaN(sides) || (sides !== 1 && sides !== 2)) sides = 1;
+            if (isNaN(copyCount) || copyCount < 1) copyCount = 1;
+
+            if (doubleSided) { pageCount /= 2; }
+
+            var wirePrice = withWire ? (sides === 1 ? (pageCount <= 50 ? 5 : (pageCount / 10)) : (pageCount <= 100 ? 5 : (pageCount / 20))) : 0;
+            var gluePrice = withGlue ? 5 : 0;
+            var pricePerPageForOneCopy = pageCount / pricePerPage;
+            var totalPriceForAllCopies = (pricePerPageForOneCopy + wirePrice + gluePrice) * copyCount;
+
+            fileDiv.querySelector(".price").textContent = pricePerPageForOneCopy.toFixed(2) + " ريال سعودي";
+            fileDiv.querySelector(".wirePrice").textContent = wirePrice.toFixed(2) + " ريال سعودي";
+            fileDiv.querySelector(".gluePrice").textContent = gluePrice.toFixed(2) + " ريال سعودي";
+            fileDiv.querySelector(".totalPrice span").textContent = totalPriceForAllCopies.toFixed(2) + " ريال سعودي";
+
+            calculateTotalPrice();
+        }
+
+        function setupAutoRecalc(fileDiv) {
+            var inputs = [
+                fileDiv.querySelector("#pageCount"),
+                fileDiv.querySelector("#pricePerPage"),
+                fileDiv.querySelector("#doubleSided"),
+                fileDiv.querySelector("#withWire"),
+                fileDiv.querySelector("#withGlue"),
+                fileDiv.querySelector("#sides"),
+                fileDiv.querySelector("#copyCount")
+            ];
+            inputs.forEach(function(el) {
+                if (!el) return;
+                var evt = (el.tagName === 'INPUT' && el.type === 'text') ? 'input' : 'change';
+                el.addEventListener(evt, function() { 
+                    if(el.id === "pageCount") updateFileHeader(fileDiv);
+                    calculatePriceForFile(fileDiv); 
+                });
+            });
+        }
+
+        function calculateTotalPrice() {
+            var files = document.querySelectorAll(".totalPrice span");
+            var totalPrice = 0;
+            for (var i = 0; i < files.length; i++) {
+                totalPrice += parseFloat(files[i].textContent);
+            }
+            document.getElementById("totalPriceValue").textContent = totalPrice.toFixed(2);
+        }
+
+        function applyDefaults() {
+            var dPrice = document.getElementById("defaultPricePerPage").value;
+            var dDS = document.getElementById("defaultDoubleSided").checked;
+            var dWire = document.getElementById("defaultWithWire").checked;
+            var dGlue = document.getElementById("defaultWithGlue").checked;
+            var dSides = document.getElementById("defaultSides").value;
+            var dCopy = document.getElementById("defaultCopyCount").value;
+
+            var files = document.querySelectorAll(".file");
+            files.forEach(function(file) {
+                file.querySelector("#pricePerPage").value = dPrice;
+                file.querySelector("#doubleSided").checked = dDS;
+                file.querySelector("#withWire").checked = dWire;
+                file.querySelector("#withGlue").checked = dGlue;
+                file.querySelector("#sides").value = dSides;
+                file.querySelector("#copyCount").value = dCopy;
+                calculatePriceForFile(file);
+            });
+        }
+
+        const fileDropArea = document.getElementById('fileDropArea');
+        fileDropArea.addEventListener('dragover', (event) => {
+            event.preventDefault();
+            fileDropArea.style.backgroundColor = 'rgba(0, 123, 255, 0.2)';
+        });
+        fileDropArea.addEventListener('dragleave', () => {
+            fileDropArea.style.backgroundColor = 'transparent';
+        });
+        fileDropArea.addEventListener('drop', (event) => {
+            event.preventDefault();
+            fileDropArea.style.backgroundColor = 'transparent';
+            const files = event.dataTransfer.files;
+            Array.from(files).forEach(file => {
+                const name = (file.name || '').toLowerCase();
+                if (file.type === 'application/pdf' || /\.pdf$/i.test(name)) { handlePDF(file); }
+                else if (['image/png', 'image/jpeg', 'image/jpg'].includes(file.type) || /\.(png|jpe?g)$/i.test(name)) { addFileWithPageCount(1, file); }
+                else if (file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' || /\.docx$/i.test(name)) { handleWord(file); }
+                else if (file.type === 'application/vnd.openxmlformats-officedocument.presentationml.presentation' || /\.pptx$/i.test(name)) { handlePPTX(file); }
+            });
+        });
+
+        function handlePDF(file) {
+            const reader = new FileReader();
+            reader.onload = function() {
+                const typedarray = new Uint8Array(this.result);
+                pdfjsLib.getDocument(typedarray).promise.then(function(pdf) {
+                    addFileWithPageCount(pdf.numPages, file);
+                });
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function handleWord(file) {
+            const reader = new FileReader();
+            reader.onload = function() {
+                const arrayBuffer = this.result;
+                JSZip.loadAsync(arrayBuffer).then(function(zip) {
+                    const appXmlFile = zip.file('docProps/app.xml');
+                    if (appXmlFile) {
+                        appXmlFile.async('text').then(function(xmlText) {
+                            const parser = new DOMParser();
+                            const xmlDoc = parser.parseFromString(xmlText, 'application/xml');
+                            const pagesNode = xmlDoc.getElementsByTagName('Pages')[0];
+                            const pages = pagesNode ? parseInt(pagesNode.textContent, 10) : 1;
+                            addFileWithPageCount(pages, file);
+                        });
+                    }
+                });
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function handlePPTX(file) {
+            const reader = new FileReader();
+            reader.onload = function() {
+                JSZip.loadAsync(this.result).then(function(zip) {
+                    const slideCount = Object.keys(zip.files).filter(fileName => fileName.match(/ppt\/slides\/slide\d+\.xml/)).length;
+                    addFileWithPageCount(slideCount, file);
+                });
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function addFileWithPageCount(pageCount, srcFile) {
+            addFile();
+            var lastFile = document.querySelector("#files .file:last-child");
+            var name = srcFile.name || 'بدون اسم';
+            var ext = name.split('.').pop().toUpperCase();
+            
+            lastFile.dataset.fileType = ext;
+            lastFile.dataset.fileName = name;
+            lastFile.querySelector("#pageCount").value = pageCount;
+            
+            updateFileHeader(lastFile);
+            calculatePriceForFile(lastFile);
         }
     </script>
 </body>
