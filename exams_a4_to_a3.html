@@ -125,24 +125,12 @@
 
             try {
                 const arrayBuffer = await file.arrayBuffer();
-                let srcDoc = await PDFDocument.load(arrayBuffer);
-                let pageCount = srcDoc.getPageCount();
+                const srcDoc = await PDFDocument.load(arrayBuffer);
+                const pageCount = srcDoc.getPageCount();
 
-                // Check for 3 or 4 pages
                 if (pageCount !== 4 && pageCount !== 3) {
                     updateStatus(`Error: PDF must have 3 or 4 pages (Found ${pageCount}).`, true);
                     return;
-                }
-
-                // If 3 pages, insert a blank page as the second page (index 1)
-                if (pageCount === 3) {
-                    const firstPage = srcDoc.getPage(0);
-                    const { width, height } = firstPage.getSize();
-                    srcDoc.insertPage(1, [width, height]);
-                    
-                    // Workaround: Save and reload the document in memory so the new blank page is fully initialized
-                    const tempBytes = await srcDoc.save();
-                    srcDoc = await PDFDocument.load(tempBytes);
                 }
 
                 // A3 Dimensions in points (Landscape)
@@ -151,23 +139,38 @@
                 const midX = a3Width / 2;
 
                 const outDoc = await PDFDocument.create();
+                const srcPages = srcDoc.getPages();
                 
+                // تحديد الصفحات المنطقية بناءً على عدد الصفحات
+                // إذا كان 4 صفحات: [0, 1, 2, 3]
+                // إذا كان 3 صفحات: نضع مكان الصفحة الثانية (الفارغة) قيمة null لتخطيها: [0, null, 1, 2]
+                let logicalPages = [];
+                if (pageCount === 4) {
+                    logicalPages = [0, 1, 2, 3];
+                } else {
+                    logicalPages = [0, null, 1, 2];
+                }
+
                 // Layout pattern: [Left Page, Right Page]
                 const layout = [[0, 3], [2, 1]];
-                const srcPages = srcDoc.getPages(); // Get the finalized pages array
 
                 for (const [leftIdx, rightIdx] of layout) {
                     const page = outDoc.addPage([a3Width, a3Height]);
                     
-                    // Embed pages using embedPage (more stable for manipulated arrays)
-                    const leftEmbedded = await outDoc.embedPage(srcPages[leftIdx]);
-                    const rightEmbedded = await outDoc.embedPage(srcPages[rightIdx]);
+                    const srcLeftIdx = logicalPages[leftIdx];
+                    const srcRightIdx = logicalPages[rightIdx];
 
-                    // Draw Left
-                    page.drawPage(leftEmbedded, { x: 0, y: 0, width: midX, height: a3Height });
+                    // Draw Left if a page exists (not null)
+                    if (srcLeftIdx !== null) {
+                        const leftEmbedded = await outDoc.embedPage(srcPages[srcLeftIdx]);
+                        page.drawPage(leftEmbedded, { x: 0, y: 0, width: midX, height: a3Height });
+                    }
 
-                    // Draw Right
-                    page.drawPage(rightEmbedded, { x: midX, y: 0, width: midX, height: a3Height });
+                    // Draw Right if a page exists (not null)
+                    if (srcRightIdx !== null) {
+                        const rightEmbedded = await outDoc.embedPage(srcPages[srcRightIdx]);
+                        page.drawPage(rightEmbedded, { x: midX, y: 0, width: midX, height: a3Height });
+                    }
 
                     // Draw Middle Fold Line
                     page.drawLine({
@@ -184,7 +187,8 @@
 
             } catch (err) {
                 console.error("PDF Processing Error:", err);
-                updateStatus("Error processing file. Check browser console (F12) for details.", true);
+                updateStatus("Error: " + err.message, true);
+                alert(err.stack || err); 
             }
         }
 
