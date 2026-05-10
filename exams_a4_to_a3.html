@@ -92,7 +92,6 @@
         let processedPdfBytes = null;
 
         // --- Event Listeners ---
-        
         dropZone.addEventListener('click', () => fileInput.click());
 
         dropZone.addEventListener('dragover', (e) => {
@@ -116,7 +115,6 @@
         });
 
         // --- Logic ---
-
         async function processPDF(file) {
             if (file.type !== "application/pdf") {
                 updateStatus("Error: Please provide a PDF file.", true);
@@ -127,21 +125,24 @@
 
             try {
                 const arrayBuffer = await file.arrayBuffer();
-                const srcDoc = await PDFDocument.load(arrayBuffer);
+                let srcDoc = await PDFDocument.load(arrayBuffer);
                 let pageCount = srcDoc.getPageCount();
 
-                // التحقق من عدد الصفحات (3 أو 4)
+                // Check for 3 or 4 pages
                 if (pageCount !== 4 && pageCount !== 3) {
                     updateStatus(`Error: PDF must have 3 or 4 pages (Found ${pageCount}).`, true);
                     return;
                 }
 
-                // إضافة صفحة فارغة في الموضع الثاني إذا كان الملف يحتوي على 3 صفحات فقط
+                // If 3 pages, insert a blank page as the second page (index 1)
                 if (pageCount === 3) {
                     const firstPage = srcDoc.getPage(0);
                     const { width, height } = firstPage.getSize();
-                    // إدراج الصفحة الفارغة في الفهرس 1 (لتصبح الصفحة الثانية)
                     srcDoc.insertPage(1, [width, height]);
+                    
+                    // Workaround: Save and reload the document in memory so the new blank page is fully initialized
+                    const tempBytes = await srcDoc.save();
+                    srcDoc = await PDFDocument.load(tempBytes);
                 }
 
                 // A3 Dimensions in points (Landscape)
@@ -151,23 +152,24 @@
 
                 const outDoc = await PDFDocument.create();
                 
-                // Logic: [(0, 3), (2, 1)] -> ترتيب الصفحات المطلوبة
+                // Layout pattern: [Left Page, Right Page]
                 const layout = [[0, 3], [2, 1]];
+                const srcPages = srcDoc.getPages(); // Get the finalized pages array
 
                 for (const [leftIdx, rightIdx] of layout) {
                     const page = outDoc.addPage([a3Width, a3Height]);
                     
-                    // Embed pages
-                    const [leftPage] = await outDoc.embedPdf(srcDoc, [leftIdx]);
-                    const [rightPage] = await outDoc.embedPdf(srcDoc, [rightIdx]);
+                    // Embed pages using embedPage (more stable for manipulated arrays)
+                    const leftEmbedded = await outDoc.embedPage(srcPages[leftIdx]);
+                    const rightEmbedded = await outDoc.embedPage(srcPages[rightIdx]);
 
                     // Draw Left
-                    page.drawPage(leftPage, { x: 0, y: 0, width: midX, height: a3Height });
+                    page.drawPage(leftEmbedded, { x: 0, y: 0, width: midX, height: a3Height });
 
                     // Draw Right
-                    page.drawPage(rightPage, { x: midX, y: 0, width: midX, height: a3Height });
+                    page.drawPage(rightEmbedded, { x: midX, y: 0, width: midX, height: a3Height });
 
-                    // Draw Middle Line
+                    // Draw Middle Fold Line
                     page.drawLine({
                         start: { x: midX, y: 0 },
                         end: { x: midX, y: a3Height },
@@ -181,8 +183,8 @@
                 downloadBtn.style.display = "block";
 
             } catch (err) {
-                console.error(err);
-                updateStatus("An error occurred while processing.", true);
+                console.error("PDF Processing Error:", err);
+                updateStatus("Error processing file. Check browser console (F12) for details.", true);
             }
         }
 
