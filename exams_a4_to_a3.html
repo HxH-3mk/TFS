@@ -70,7 +70,7 @@
 
     <div class="container">
         <h1>Booklet Maker</h1>
-        <p>Drop a 4-page A4 PDF to create an A3 booklet spread.</p>
+        <p>Drop a 3 or 4-page A4 PDF to create an A3 booklet spread.</p>
 
         <div id="drop-zone">
             <strong>Drag & Drop PDF here</strong><br>
@@ -128,11 +128,20 @@
             try {
                 const arrayBuffer = await file.arrayBuffer();
                 const srcDoc = await PDFDocument.load(arrayBuffer);
-                const pageCount = srcDoc.getPageCount();
+                let pageCount = srcDoc.getPageCount();
 
-                if (pageCount !== 4) {
-                    updateStatus(`Error: PDF must have 4 pages (Found ${pageCount}).`, true);
+                // التحقق من عدد الصفحات (3 أو 4)
+                if (pageCount !== 4 && pageCount !== 3) {
+                    updateStatus(`Error: PDF must have 3 or 4 pages (Found ${pageCount}).`, true);
                     return;
+                }
+
+                // إضافة صفحة فارغة في الموضع الثاني إذا كان الملف يحتوي على 3 صفحات فقط
+                if (pageCount === 3) {
+                    const firstPage = srcDoc.getPage(0);
+                    const { width, height } = firstPage.getSize();
+                    // إدراج الصفحة الفارغة في الفهرس 1 (لتصبح الصفحة الثانية)
+                    srcDoc.insertPage(1, [width, height]);
                 }
 
                 // A3 Dimensions in points (Landscape)
@@ -142,7 +151,7 @@
 
                 const outDoc = await PDFDocument.create();
                 
-                // Logic: [(0, 3), (2, 1)] -> Front/Back and Inside spread
+                // Logic: [(0, 3), (2, 1)] -> ترتيب الصفحات المطلوبة
                 const layout = [[0, 3], [2, 1]];
 
                 for (const [leftIdx, rightIdx] of layout) {
