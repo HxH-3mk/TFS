@@ -70,7 +70,7 @@
 
     <div class="container">
         <h1>Booklet Maker</h1>
-        <p>Drop a 3 or 4-page A4 PDF to create an A3 booklet spread.</p>
+        <p>Drop a 4-page A4 PDF to create an A3 booklet spread.</p>
 
         <div id="drop-zone">
             <strong>Drag & Drop PDF here</strong><br>
@@ -92,6 +92,7 @@
         let processedPdfBytes = null;
 
         // --- Event Listeners ---
+        
         dropZone.addEventListener('click', () => fileInput.click());
 
         dropZone.addEventListener('dragover', (e) => {
@@ -115,6 +116,7 @@
         });
 
         // --- Logic ---
+
         async function processPDF(file) {
             if (file.type !== "application/pdf") {
                 updateStatus("Error: Please provide a PDF file.", true);
@@ -128,8 +130,8 @@
                 const srcDoc = await PDFDocument.load(arrayBuffer);
                 const pageCount = srcDoc.getPageCount();
 
-                if (pageCount !== 4 && pageCount !== 3) {
-                    updateStatus(`Error: PDF must have 3 or 4 pages (Found ${pageCount}).`, true);
+                if (pageCount !== 4) {
+                    updateStatus(`Error: PDF must have 4 pages (Found ${pageCount}).`, true);
                     return;
                 }
 
@@ -139,40 +141,24 @@
                 const midX = a3Width / 2;
 
                 const outDoc = await PDFDocument.create();
-                const srcPages = srcDoc.getPages();
                 
-                // تحديد الصفحات المنطقية بناءً على عدد الصفحات
-                // إذا كان 4 صفحات: [0, 1, 2, 3]
-                // إذا كان 3 صفحات: نضع مكان الصفحة الثانية (الفارغة) قيمة null لتخطيها: [0, null, 1, 2]
-                let logicalPages = [];
-                if (pageCount === 4) {
-                    logicalPages = [0, 1, 2, 3];
-                } else {
-                    logicalPages = [0, null, 1, 2];
-                }
-
-                // Layout pattern: [Left Page, Right Page]
+                // Logic: [(0, 3), (2, 1)] -> Front/Back and Inside spread
                 const layout = [[0, 3], [2, 1]];
 
                 for (const [leftIdx, rightIdx] of layout) {
                     const page = outDoc.addPage([a3Width, a3Height]);
                     
-                    const srcLeftIdx = logicalPages[leftIdx];
-                    const srcRightIdx = logicalPages[rightIdx];
+                    // Embed pages
+                    const [leftPage] = await outDoc.embedPdf(srcDoc, [leftIdx]);
+                    const [rightPage] = await outDoc.embedPdf(srcDoc, [rightIdx]);
 
-                    // Draw Left if a page exists (not null)
-                    if (srcLeftIdx !== null) {
-                        const leftEmbedded = await outDoc.embedPage(srcPages[srcLeftIdx]);
-                        page.drawPage(leftEmbedded, { x: 0, y: 0, width: midX, height: a3Height });
-                    }
+                    // Draw Left
+                    page.drawPage(leftPage, { x: 0, y: 0, width: midX, height: a3Height });
 
-                    // Draw Right if a page exists (not null)
-                    if (srcRightIdx !== null) {
-                        const rightEmbedded = await outDoc.embedPage(srcPages[srcRightIdx]);
-                        page.drawPage(rightEmbedded, { x: midX, y: 0, width: midX, height: a3Height });
-                    }
+                    // Draw Right
+                    page.drawPage(rightPage, { x: midX, y: 0, width: midX, height: a3Height });
 
-                    // Draw Middle Fold Line
+                    // Draw Middle Line
                     page.drawLine({
                         start: { x: midX, y: 0 },
                         end: { x: midX, y: a3Height },
@@ -186,9 +172,8 @@
                 downloadBtn.style.display = "block";
 
             } catch (err) {
-                console.error("PDF Processing Error:", err);
-                updateStatus("Error: " + err.message, true);
-                alert(err.stack || err); 
+                console.error(err);
+                updateStatus("An error occurred while processing.", true);
             }
         }
 
