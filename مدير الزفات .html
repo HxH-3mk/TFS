@@ -1,0 +1,679 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مشغل ومدير الصوتيات المتقدم</title>
+    <!-- مكتبة JSZip للتعامل مع الملفات المضغوطة ZIP -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        :root {
+            --primary: #4361ee;
+            --bg: #f8f9fa;
+            --surface: #ffffff;
+            --text: #2b2d42;
+            --border: #e9ecef;
+            --success: #28a745;
+            --info: #17a2b8;
+            --danger: #dc3545;
+            --warning: #ffc107;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            display: flex;
+            height: 100vh;
+        }
+
+        .container {
+            display: flex;
+            width: 100%;
+            max-width: 1200px;
+            margin: 0 auto;
+            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+            background: var(--surface);
+        }
+
+        /* الجزء الأول: الإضافة والإدارة */
+        .manager-section {
+            flex: 1;
+            padding: 2rem;
+            border-left: 2px solid var(--border);
+            overflow-y: auto;
+        }
+
+        /* الجزء الثاني: المشغل والقائمة */
+        .player-section {
+            flex: 1;
+            padding: 2rem;
+            background: #fdfdfd;
+            display: flex;
+            flex-direction: column;
+        }
+
+        h2 { margin-bottom: 1.5rem; color: var(--primary); }
+
+        .upload-zone {
+            border: 2px dashed var(--primary);
+            border-radius: 8px;
+            padding: 2rem;
+            text-align: center;
+            background: #f0f4ff;
+            cursor: pointer;
+            transition: 0.3s;
+            margin-bottom: 1rem;
+        }
+
+        .upload-zone.dragover { background: #dce4ff; }
+
+        .form-group { margin-bottom: 1rem; }
+        .form-group label { display: block; margin-bottom: 0.5rem; font-weight: bold; }
+        .form-group input, .form-group textarea {
+            width: 100%; padding: 0.8rem; border: 1px solid var(--border); border-radius: 4px;
+        }
+
+        button {
+            background: var(--primary); color: white; border: none; padding: 0.8rem 1.5rem;
+            border-radius: 4px; cursor: pointer; font-size: 1rem; transition: 0.2s;
+        }
+        button:hover { opacity: 0.9; }
+        button:disabled { background: #ccc; cursor: not-allowed; }
+
+        .form-buttons { display: flex; gap: 0.5rem; }
+
+        /* الأزرار في الأسفل وتصميم القائمة المنسدلة للخيارات الإضافية */
+        .actions {
+            margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--border);
+            display: flex; gap: 1rem; flex-wrap: wrap; align-items: center;
+        }
+
+        .dropdown { position: relative; display: inline-block; }
+        
+        .dropdown-content {
+            display: none; position: absolute; right: 0; bottom: 110%;
+            background-color: var(--surface); min-width: 160px;
+            box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.15); z-index: 10;
+            border-radius: 6px; border: 1px solid var(--border); overflow: hidden;
+        }
+        
+        .dropdown-content button {
+            color: var(--text); padding: 10px 14px; text-decoration: none;
+            display: block; width: 100%; text-align: right; background: none;
+            border-radius: 0; font-size: 0.9rem;
+        }
+        
+        .dropdown-content button:hover { background-color: #f1f1f1; }
+        .dropdown-content button.danger-text { color: var(--danger); font-weight: bold; }
+        .show { display: block !important; }
+
+        /* تصميم المشغل */
+        .player-box {
+            background: var(--surface); padding: 1.5rem; border-radius: 12px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 2rem; border: 1px solid var(--border);
+        }
+
+        .now-playing-title { font-size: 1.2rem; font-weight: bold; margin-bottom: 0.5rem; }
+        .now-playing-desc { font-size: 0.9rem; color: #6c757d; margin-bottom: 1rem; }
+        .controls { display: flex; align-items: center; gap: 1rem; }
+        .play-btn {
+            width: 50px; height: 50px; border-radius: 50%; display: flex;
+            align-items: center; justify-content: center; font-size: 1.2rem;
+        }
+
+        .progress-container { flex: 1; display: flex; flex-direction: column; gap: 0.5rem; }
+        .time-info { display: flex; justify-content: space-between; font-size: 0.85rem; color: #6c757d; }
+        input[type="range"] { width: 100%; cursor: pointer; }
+
+        /* قائمة الصوتيات */
+        .playlist { flex: 1; overflow-y: auto; }
+        .track-item {
+            padding: 1rem; border: 1px solid var(--border); border-radius: 8px;
+            margin-bottom: 0.5rem; cursor: pointer; transition: 0.2s;
+            display: flex; justify-content: space-between; align-items: center;
+        }
+        .track-item:hover { background: #f8f9fa; }
+        .track-item.active { border-color: var(--primary); background: #f0f4ff; }
+        .track-info h4 { margin-bottom: 0.3rem; }
+        .track-info p { font-size: 0.85rem; color: #6c757d; }
+        
+        .track-meta { display: flex; align-items: center; gap: 0.8rem; font-size: 0.85rem; color: #6c757d; }
+        .badge { background: var(--primary); color: white; padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; }
+        
+        /* زر الثلاث نقاط للمقاطع */
+        .dots-btn {
+            background: none; border: none; font-size: 1.4rem; color: #6c757d;
+            padding: 0 0.5rem; cursor: pointer; line-height: 1;
+        }
+        .dots-btn:hover { color: var(--text); opacity: 1; }
+
+        @media (max-width: 768px) {
+            body { height: auto; }
+            .container { flex-direction: column; }
+            .manager-section { border-left: none; border-bottom: 2px solid var(--border); }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- الجزء الأول: الإضافة والإدارة -->
+    <div class="manager-section">
+        <h2 id="section-title">إضافة صوتيات جديدة</h2>
+        
+        <div class="upload-zone" id="drop-zone">
+            <p>اسحب وأفلت ملف MP3 هنا أو انقر للاختيار</p>
+            <input type="file" id="file-input" accept=".mp3" style="display: none;">
+        </div>
+        <div id="selected-file-name" style="margin-bottom: 1rem; color: var(--primary); font-weight: bold;"></div>
+
+        <div class="form-group">
+            <label>اسم الأغنية / المقطع (مطلوب)</label>
+            <input type="text" id="track-name" placeholder="أدخل الاسم...">
+        </div>
+
+        <div class="form-group">
+            <label>الوصف (اختياري)</label>
+            <textarea id="track-desc" rows="3" placeholder="أدخل وصفاً..."></textarea>
+        </div>
+
+        <div class="form-group">
+            <label>الأهمية / الترتيب</label>
+            <input type="number" id="track-priority" placeholder="1 = الأهم, 0 = غير مهم" min="0" value="0">
+            <small style="color: #6c757d;">رقم 1 يظهر في الأعلى، رقم 0 يظهر في النهاية.</small>
+        </div>
+
+        <div class="form-buttons">
+            <button id="add-btn" onclick="addTrack()">إضافة للقائمة</button>
+            <button id="cancel-edit-btn" onclick="cancelEdit()" style="background: #6c757d; display: none;">إلغاء التعديل</button>
+        </div>
+
+        <div class="actions">
+            <button onclick="exportToZip()" id="export-btn" style="background: var(--success);">تصدير ZIP</button>
+            <button onclick="document.getElementById('import-input').click()" id="import-btn" style="background: var(--info);">استيراد ZIP</button>
+            
+            <!-- قائمة خيارات إضافية تحتوي على الحذف الكلي -->
+            <div class="dropdown">
+                <button onclick="toggleDropdown('more-options-menu', event)" style="background: #6c757d;">خيارات إضافية ⚙️</button>
+                <div id="more-options-menu" class="dropdown-content">
+                    <button class="danger-text" onclick="clearAllData(event)">🗑️ مسح كل الصوتيات</button>
+                </div>
+            </div>
+
+            <input type="file" id="import-input" accept=".zip" style="display: none;" onchange="importFromZip(event)">
+        </div>
+    </div>
+
+    <!-- الجزء الثاني: المشغل والقائمة -->
+    <div class="player-section">
+        <h2>المشغل</h2>
+        
+        <div class="player-box">
+            <div class="now-playing-title" id="np-title">لا يوجد مقطع قيد التشغيل</div>
+            <div class="now-playing-desc" id="np-desc">...</div>
+            
+            <div class="controls">
+                <button class="play-btn" id="play-pause-btn" onclick="togglePlay()">▶</button>
+                
+                <div class="progress-container">
+                    <input type="range" id="progress-bar" value="0" min="0" max="100" step="1" onchange="seekAudio()">
+                    <div class="time-info">
+                        <span id="current-time">00:00</span>
+                        <span id="remaining-time">-00:00</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <h3 style="margin-bottom: 1rem;">قائمة التشغيل</h3>
+        <div class="playlist" id="playlist">
+            <!-- سيتم إضافة المقاطع هنا -->
+        </div>
+    </div>
+</div>
+
+<audio id="main-audio"></audio>
+
+<script>
+    let tracks = [];
+    let currentFileBlob = null;
+    let currentTrackIndex = -1;
+    let isPlaying = false;
+    let editingTrackId = null;
+    let db;
+
+    // تهيئة IndexedDB
+    const request = indexedDB.open("AudioPlayerDB", 1);
+    request.onupgradeneeded = (e) => {
+        db = e.target.result;
+        if (!db.objectStoreNames.contains("tracks")) {
+            db.createObjectStore("tracks", { keyPath: "id" });
+        }
+    };
+    request.onsuccess = (e) => {
+        db = e.target.result;
+        loadTracksFromDB();
+    };
+    request.onerror = (e) => console.error("خطأ في فتح قاعدة البيانات", e);
+
+    // عناصر DOM
+    const dropZone = document.getElementById('drop-zone');
+    const fileInput = document.getElementById('file-input');
+    const fileNameDisplay = document.getElementById('selected-file-name');
+    const audioPlayer = document.getElementById('main-audio');
+    const playPauseBtn = document.getElementById('play-pause-btn');
+    const progressBar = document.getElementById('progress-bar');
+    const currentTimeEl = document.getElementById('current-time');
+    const remainingTimeEl = document.getElementById('remaining-time');
+    const addBtn = document.getElementById('add-btn');
+    const cancelEditBtn = document.getElementById('cancel-edit-btn');
+    const sectionTitle = document.getElementById('section-title');
+
+    // إغلاق أي قائمة منسدلة عند النقر في أي مكان آخر بالصفحة
+    window.onclick = function(event) {
+        if (!event.target.matches('.dots-btn') && !event.target.matches('.dropdown button')) {
+            document.querySelectorAll('.dropdown-content').forEach(menu => menu.classList.remove('show'));
+        }
+    };
+
+    function toggleDropdown(menuId, event) {
+        event.stopPropagation();
+        document.querySelectorAll('.dropdown-content').forEach(menu => {
+            if (menu.id !== menuId) menu.classList.remove('show');
+        });
+        document.getElementById(menuId).classList.toggle('show');
+    }
+
+    // إعداد السحب والإفلات
+    dropZone.addEventListener('click', () => fileInput.click());
+    dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragover'); });
+    dropZone.addEventListener('dragleave', () => { dropZone.classList.remove('dragover'); });
+    dropZone.addEventListener('drop', (e) => {
+        e.preventDefault();
+        dropZone.classList.remove('dragover');
+        if (e.dataTransfer.files.length) handleFileSelect(e.dataTransfer.files[0]);
+    });
+    fileInput.addEventListener('change', (e) => { if (e.target.files.length) handleFileSelect(e.target.files[0]); });
+
+    function handleFileSelect(file) {
+        if (file.type !== "audio/mpeg" && !file.name.endsWith(".mp3")) {
+            alert("الرجاء رفع ملف MP3 فقط.");
+            return;
+        }
+        if (!editingTrackId) {
+            document.getElementById('track-name').value = file.name.replace('.mp3', '');
+        }
+        fileNameDisplay.textContent = "تم اختيار: " + file.name;
+        currentFileBlob = file;
+    }
+
+    function addTrack() {
+        const name = document.getElementById('track-name').value.trim();
+        const desc = document.getElementById('track-desc').value.trim();
+        const priority = parseInt(document.getElementById('track-priority').value) || 0;
+
+        if (editingTrackId !== null) {
+            if (!name) { alert("اسم المقطع مطلوب."); return; }
+            const trackIndex = tracks.findIndex(t => t.id === editingTrackId);
+            if (trackIndex !== -1) {
+                let track = tracks[trackIndex];
+                track.name = name;
+                track.desc = desc;
+                track.priority = priority;
+
+                if (currentFileBlob) {
+                    const tempUrl = URL.createObjectURL(currentFileBlob);
+                    const tempAudio = new Audio(tempUrl);
+                    tempAudio.onloadedmetadata = () => {
+                        track.blob = currentFileBlob;
+                        track.duration = tempAudio.duration;
+                        saveTrackToDB(track);
+                        cancelEdit();
+                    };
+                    return;
+                } else {
+                    saveTrackToDB(track);
+                    cancelEdit();
+                    return;
+                }
+            }
+        }
+
+        if (!name || !currentFileBlob) {
+            alert("الرجاء اختيار ملف وإدخال اسم المقطع.");
+            return;
+        }
+
+        const tempUrl = URL.createObjectURL(currentFileBlob);
+        const tempAudio = new Audio(tempUrl);
+        tempAudio.onloadedmetadata = () => {
+            const track = {
+                id: Date.now(),
+                name: name,
+                desc: desc,
+                priority: priority,
+                blob: currentFileBlob,
+                duration: tempAudio.duration,
+                fileName: `audio_${Date.now()}.mp3`
+            };
+            saveTrackToDB(track);
+            resetForm();
+        };
+    }
+
+    function editTrack(id, event) {
+        event.stopPropagation();
+        document.querySelectorAll('.dropdown-content').forEach(menu => menu.classList.remove('show'));
+        const track = tracks.find(t => t.id === id);
+        if (!track) return;
+
+        editingTrackId = id;
+        document.getElementById('track-name').value = track.name;
+        document.getElementById('track-desc').value = track.desc;
+        document.getElementById('track-priority').value = track.priority;
+        fileNameDisplay.textContent = "الملف الحالي: " + track.fileName + " (يمكنك رفع ملف جديد لاستبداله)";
+        currentFileBlob = null;
+
+        sectionTitle.textContent = "تعديل المقطع الصوتي";
+        addBtn.textContent = "حفظ التعديلات";
+        addBtn.style.background = "var(--success)";
+        cancelEditBtn.style.display = "inline-block";
+    }
+
+    function cancelEdit() {
+        editingTrackId = null;
+        sectionTitle.textContent = "إضافة صوتيات جديدة";
+        addBtn.textContent = "إضافة للقائمة";
+        addBtn.style.background = "var(--primary)";
+        cancelEditBtn.style.display = "none";
+        resetForm();
+    }
+
+    function resetForm() {
+        document.getElementById('track-name').value = '';
+        document.getElementById('track-desc').value = '';
+        document.getElementById('track-priority').value = '0';
+        currentFileBlob = null;
+        fileNameDisplay.textContent = '';
+        fileInput.value = '';
+    }
+
+    function saveTrackToDB(track) {
+        const transaction = db.transaction(["tracks"], "readwrite");
+        const store = transaction.objectStore("tracks");
+        store.put(track);
+        transaction.oncomplete = () => {
+            loadTracksFromDB();
+            if (currentTrackIndex !== -1 && tracks[currentTrackIndex]?.id === track.id) {
+                document.getElementById('np-title').textContent = track.name;
+                document.getElementById('np-desc').textContent = track.desc || 'لا يوجد وصف';
+            }
+        };
+    }
+
+    function loadTracksFromDB() {
+        const transaction = db.transaction(["tracks"], "readonly");
+        const store = transaction.objectStore("tracks");
+        const getAllRequest = store.getAll();
+        getAllRequest.onsuccess = () => {
+            tracks = getAllRequest.result || [];
+            sortAndRenderPlaylist();
+        };
+    }
+
+    function deleteTrack(id, event) {
+        event.stopPropagation();
+        document.querySelectorAll('.dropdown-content').forEach(menu => menu.classList.remove('show'));
+        
+        if (!confirm("⚠️ هل أنت متأكد من رغبتك في حذف هذا المقطع الصوتي؟\nلا يمكن التراجع عن هذه العملية.")) {
+            return;
+        }
+        
+        if (editingTrackId === id) cancelEdit();
+        
+        const transaction = db.transaction(["tracks"], "readwrite");
+        const store = transaction.objectStore("tracks");
+        store.delete(id);
+        transaction.oncomplete = () => {
+            if (currentTrackIndex !== -1 && tracks[currentTrackIndex]?.id === id) {
+                audioPlayer.pause();
+                audioPlayer.src = "";
+                document.getElementById('np-title').textContent = "لا يوجد مقطع قيد التشغيل";
+                document.getElementById('np-desc').textContent = "...";
+                isPlaying = false;
+                playPauseBtn.textContent = '▶';
+            }
+            loadTracksFromDB();
+        };
+    }
+
+    function clearAllData(event) {
+        if (event) event.stopPropagation();
+        document.querySelectorAll('.dropdown-content').forEach(menu => menu.classList.remove('show'));
+        
+        if (!confirm("🚨 تحذير هام:\nهل أنت متأكد تماماً من رغبتك في مسح جميع الصوتيات المحفوظة في القائمة؟\nسوف تفقد كل المقاطع ولن تتمكن من استرجاعها!")) {
+            return;
+        }
+        
+        if (editingTrackId) cancelEdit();
+        
+        const transaction = db.transaction(["tracks"], "readwrite");
+        const store = transaction.objectStore("tracks");
+        store.clear();
+        transaction.oncomplete = () => {
+            audioPlayer.pause();
+            audioPlayer.src = "";
+            document.getElementById('np-title').textContent = "لا يوجد مقطع قيد التشغيل";
+            document.getElementById('np-desc').textContent = "...";
+            isPlaying = false;
+            playPauseBtn.textContent = '▶';
+            loadTracksFromDB();
+        };
+    }
+
+    function sortAndRenderPlaylist() {
+        tracks.sort((a, b) => {
+            if (a.priority === 0 && b.priority !== 0) return 1;
+            if (b.priority === 0 && a.priority !== 0) return -1;
+            return a.priority - b.priority;
+        });
+
+        const playlistEl = document.getElementById('playlist');
+        playlistEl.innerHTML = '';
+
+        tracks.forEach((track, index) => {
+            const div = document.createElement('div');
+            div.className = `track-item ${index === currentTrackIndex ? 'active' : ''}`;
+            div.onclick = () => loadAndPlay(index);
+
+            const durationFormatted = formatTime(track.duration);
+            const priorityBadge = track.priority > 0 ? `<span class="badge">#${track.priority}</span>` : '';
+            const menuId = `menu-${track.id}`;
+
+            div.innerHTML = `
+                <div class="track-info">
+                    <h4>${track.name} ${priorityBadge}</h4>
+                    <p>${track.desc || 'لا يوجد وصف'}</p>
+                </div>
+                <div class="track-meta">
+                    <span>${durationFormatted}</span>
+                    <div class="dropdown" onclick="event.stopPropagation()">
+                        <button class="dots-btn" onclick="toggleDropdown('${menuId}', event)">⋮</button>
+                        <div id="${menuId}" class="dropdown-content">
+                            <button onclick="editTrack(${track.id}, event)">✏️ تعديل</button>
+                            <button class="danger-text" onclick="deleteTrack(${track.id}, event)">🗑️ حذف</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            playlistEl.appendChild(div);
+        });
+    }
+
+    // وظائف المشغل
+    function loadAndPlay(index) {
+        currentTrackIndex = index;
+        const track = tracks[index];
+        const audioUrl = URL.createObjectURL(track.blob);
+        audioPlayer.src = audioUrl;
+        document.getElementById('np-title').textContent = track.name;
+        document.getElementById('np-desc').textContent = track.desc || 'لا يوجد وصف';
+        audioPlayer.play();
+        isPlaying = true;
+        playPauseBtn.textContent = '⏸';
+        sortAndRenderPlaylist();
+    }
+
+    function togglePlay() {
+        if (!audioPlayer.src) return;
+        if (isPlaying) { audioPlayer.pause(); playPauseBtn.textContent = '▶'; }
+        else { audioPlayer.play(); playPauseBtn.textContent = '⏸'; }
+        isPlaying = !isPlaying;
+    }
+
+    audioPlayer.addEventListener('timeupdate', () => {
+        if (!audioPlayer.duration) return;
+        const current = audioPlayer.currentTime;
+        const duration = audioPlayer.duration;
+        progressBar.value = (current / duration) * 100;
+        currentTimeEl.textContent = formatTime(current);
+        remainingTimeEl.textContent = "-" + formatTime(duration - current);
+    });
+
+    audioPlayer.addEventListener('ended', () => {
+        isPlaying = false;
+        playPauseBtn.textContent = '▶';
+        if (currentTrackIndex < tracks.length - 1) loadAndPlay(currentTrackIndex + 1);
+    });
+
+    function seekAudio() {
+        if (!audioPlayer.duration) return;
+        audioPlayer.currentTime = audioPlayer.duration * (progressBar.value / 100);
+    }
+
+    function formatTime(seconds) {
+        if (isNaN(seconds)) return "00:00";
+        const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+        const s = Math.floor(seconds % 60).toString().padStart(2, '0');
+        return `${m}:${s}`;
+    }
+
+    // التصدير إلى ZIP
+    async function exportToZip() {
+        if (tracks.length === 0) { alert("لا توجد بيانات لتصديرها."); return; }
+        const exportBtn = document.getElementById('export-btn');
+        exportBtn.textContent = "جاري التصدير..."; exportBtn.disabled = true;
+        
+        try {
+            const zip = new JSZip(); 
+            const metadata = [];
+            
+            tracks.forEach(track => {
+                zip.file(track.fileName, track.blob);
+                metadata.push({ 
+                    id: track.id, 
+                    name: track.name, 
+                    desc: track.desc, 
+                    priority: track.priority, 
+                    duration: track.duration, 
+                    fileName: track.fileName 
+                });
+            });
+            
+            zip.file("metadata.json", JSON.stringify(metadata, null, 2));
+            
+            const content = await zip.generateAsync({ type: "blob" });
+            const url = URL.createObjectURL(content);
+            const a = document.createElement('a'); 
+            a.href = url; 
+            a.download = `Audio_Playlist_${Date.now()}.zip`;
+            document.body.appendChild(a); 
+            a.click(); 
+            document.body.removeChild(a); 
+            URL.revokeObjectURL(url);
+        } catch (err) { 
+            console.error(err);
+            alert("حدث خطأ أثناء إنشاء ملف الـ ZIP."); 
+        } finally { 
+            exportBtn.textContent = "تصدير ZIP"; 
+            exportBtn.disabled = false; 
+        }
+    }
+
+    // الاستيراد من ZIP (معدل لحل مشكلة TransactionInactiveError وتجاوز قيود file://)
+    async function importFromZip(event) {
+        const file = event.target.files[0]; 
+        if (!file) return;
+        
+        const importBtn = document.getElementById('import-btn');
+        importBtn.textContent = "جاري الاستيراد..."; 
+        importBtn.disabled = true;
+        
+        try {
+            // 1. قراءة ملف الـ ZIP بالكامل كـ ArrayBuffer لتجاوز قيود الأمان المحلية
+            const arrayBuffer = await new Promise((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result);
+                reader.onerror = reject;
+                reader.readAsArrayBuffer(file);
+            });
+
+            const zip = new JSZip(); 
+            const contents = await zip.loadAsync(arrayBuffer);
+            
+            if (!contents.files["metadata.json"]) { 
+                alert("ملف الـ ZIP غير صالح (يفتقر إلى metadata.json)"); 
+                return; 
+            }
+            
+            const metaText = await contents.files["metadata.json"].async("string");
+            const metadata = JSON.parse(metaText);
+            
+            // 2. تجهيز جميع الملفات أولاً قبل فتح الاتصال بقاعدة البيانات (للحماية من إغلاق الاتصال)
+            const preparedTracks = [];
+            for (let meta of metadata) {
+                if (contents.files[meta.fileName]) {
+                    const audioArrayBuffer = await contents.files[meta.fileName].async("arraybuffer");
+                    meta.blob = new Blob([audioArrayBuffer], { type: "audio/mpeg" }); 
+                    preparedTracks.push(meta);
+                }
+            }
+            
+            // 3. فتح الاتصال بـ IndexedDB الآن والحفظ دفعة واحدة وبسرعة
+            const transaction = db.transaction(["tracks"], "readwrite");
+            const store = transaction.objectStore("tracks");
+            
+            preparedTracks.forEach(track => {
+                store.put(track);
+            });
+            
+            transaction.oncomplete = () => { 
+                alert("تم استيراد الصوتيات بنجاح!"); 
+                loadTracksFromDB(); 
+            };
+
+            transaction.onerror = (e) => {
+                console.error("Transaction Error:", e);
+                alert("حدث خطأ أثناء حفظ الملفات في المتصفح.");
+            };
+
+        } catch (err) { 
+            console.error("Import Error:", err); 
+            alert("حدث خطأ أثناء فك ضغط واستيراد الملفات. تأكد من أن الملف سليم."); 
+        } finally { 
+            importBtn.textContent = "استيراد ZIP"; 
+            importBtn.disabled = false; 
+            event.target.value = ''; 
+        }
+    }
+</script>
+
+</body>
+</html>
