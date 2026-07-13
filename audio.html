@@ -183,7 +183,31 @@
         .track-item:hover { background: var(--surface-hover); }
         .track-item.active { border-color: var(--primary); background: rgba(92, 124, 250, 0.08); }
         .track-info h4 { margin-bottom: 0.3rem; color: var(--text); }
-        .track-info p { font-size: 0.85rem; color: var(--text-muted); }
+        .track-info p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+            background: rgba(255, 255, 255, 0.02);
+            padding: 0.4rem 0.8rem;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            display: inline-block;
+            margin-top: 0.4rem;
+            line-height: 1.4;
+            max-width: 100%;
+            word-break: break-word;
+        }
+        .track-item.active .track-info p {
+            border-color: rgba(92, 124, 250, 0.25);
+            background: rgba(92, 124, 250, 0.03);
+        }
+        .track-item.no-audio .track-info p {
+            border-color: rgba(224, 49, 49, 0.15);
+            background: rgba(224, 49, 49, 0.015);
+        }
+        .track-item.no-audio.active .track-info p {
+            border-color: rgba(224, 49, 49, 0.3);
+            background: rgba(224, 49, 49, 0.04);
+        }
         
         .track-meta { 
             display: flex; 
@@ -721,7 +745,6 @@
             const menuId = `menu-${track.id}`;
 
             const originalFileHtml = (!isNoAudio && track.fileName) ? `<small style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-top: 4px;">الملف الأصلي: ${track.fileName}</small>` : '';
-            const originalFileLeftHtml = (!isNoAudio && track.fileName) ? `<span style="font-size: 0.72rem; color: var(--text-muted); margin-left: 0.5rem; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${track.fileName}">${track.fileName}</span>` : '';
 
             div.innerHTML = `
                 <div class="drag-handle" onclick="event.stopPropagation()">⋮⋮</div>
@@ -731,7 +754,6 @@
                     ${originalFileHtml}
                 </div>
                 <div class="track-meta" style="flex-shrink: 0;">
-                    ${originalFileLeftHtml}
                     <span>${durationFormatted}</span>
                     <div class="dropdown" onclick="event.stopPropagation()">
                         <button class="dots-btn" onclick="toggleDropdown('${menuId}', event)">⋮</button>
@@ -892,16 +914,9 @@
     audioPlayer.addEventListener('ended', () => {
         isPlaying = false;
         playPauseBtn.textContent = '▶';
-        if (currentTrackIndex < tracks.length - 1) {
-            let nextIndex = currentTrackIndex + 1;
-            // تخطي المقاطع التي ليس بها ملف صوتي (ملاحظات/فواصل) تلقائياً
-            while (nextIndex < tracks.length && !tracks[nextIndex].blob) {
-                nextIndex++;
-            }
-            if (nextIndex < tracks.length) {
-                loadAndPlay(nextIndex);
-            }
-        }
+        progressBar.value = 0;
+        currentTimeEl.textContent = "00:00";
+        remainingTimeEl.textContent = "-00:00";
     });
 
     function seekAudio() {
