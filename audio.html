@@ -334,9 +334,12 @@
         <h2>المشغل</h2>
         
         <div class="player-box">
-            <div class="now-playing-title" style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.5rem;">
-                <span id="np-title">لا يوجد مقطع قيد التشغيل</span>
-                <span id="np-badge"></span>
+            <div class="now-playing-title" style="display: flex; align-items: center; justify-content: space-between; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.5rem;">
+                <div style="display: flex; align-items: center; gap: 0.5rem;">
+                    <span id="np-title">لا يوجد مقطع قيد التشغيل</span>
+                    <span id="np-badge"></span>
+                </div>
+                <span id="np-original-name" style="font-size: 0.8rem; color: var(--text-muted); max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></span>
             </div>
             <div class="now-playing-desc" id="np-desc">...</div>
             
@@ -573,11 +576,14 @@
         const npTitleEl = document.getElementById('np-title');
         const npDescEl = document.getElementById('np-desc');
         const npBadgeEl = document.getElementById('np-badge');
+        const npOriginalNameEl = document.getElementById('np-original-name');
 
         if (!track) {
             npTitleEl.textContent = "لا يوجد مقطع قيد التشغيل";
             npDescEl.textContent = "...";
             npBadgeEl.innerHTML = "";
+            npOriginalNameEl.textContent = "";
+            npOriginalNameEl.title = "";
             return;
         }
 
@@ -590,6 +596,14 @@
             npBadgeEl.innerHTML = `<span class="badge" style="background: ${badgeBg}; font-size: 0.85rem; padding: 3px 8px; border-radius: 4px;">#${track.priority}</span>`;
         } else {
             npBadgeEl.innerHTML = "";
+        }
+
+        if (track.blob && track.fileName) {
+            npOriginalNameEl.textContent = track.fileName;
+            npOriginalNameEl.title = track.fileName;
+        } else {
+            npOriginalNameEl.textContent = "";
+            npOriginalNameEl.title = "";
         }
     }
 
@@ -690,13 +704,18 @@
             const priorityBadge = track.priority > 0 ? `<span class="badge" ${priorityBadgeColor}>#${track.priority}</span>` : '';
             const menuId = `menu-${track.id}`;
 
+            const originalFileHtml = (!isNoAudio && track.fileName) ? `<small style="font-size: 0.72rem; color: var(--text-muted); display: block; margin-top: 4px;">الملف الأصلي: ${track.fileName}</small>` : '';
+            const originalFileLeftHtml = (!isNoAudio && track.fileName) ? `<span style="font-size: 0.72rem; color: var(--text-muted); margin-left: 0.5rem; max-width: 120px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;" title="${track.fileName}">${track.fileName}</span>` : '';
+
             div.innerHTML = `
                 <div class="drag-handle" onclick="event.stopPropagation()">⋮⋮</div>
-                <div class="track-info" style="flex: 1;">
+                <div class="track-info" style="flex: 1; min-width: 0;">
                     <h4>${track.name} ${priorityBadge}</h4>
                     <p>${track.desc || 'لا يوجد وصف'}</p>
+                    ${originalFileHtml}
                 </div>
-                <div class="track-meta">
+                <div class="track-meta" style="flex-shrink: 0;">
+                    ${originalFileLeftHtml}
                     <span>${durationFormatted}</span>
                     <div class="dropdown" onclick="event.stopPropagation()">
                         <button class="dots-btn" onclick="toggleDropdown('${menuId}', event)">⋮</button>
