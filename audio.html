@@ -253,6 +253,22 @@
             transform: translateY(-2px);
         }
 
+        /* تنسيقات المقاطع الخالية من الصوت (الملاحظات/الفواصل) */
+        .track-item.no-audio {
+            border-color: rgba(224, 49, 49, 0.25);
+            background: rgba(224, 49, 49, 0.03);
+        }
+        .track-item.no-audio:hover {
+            background: rgba(224, 49, 49, 0.06);
+        }
+        .track-item.no-audio.active {
+            border-color: var(--danger);
+            background: rgba(224, 49, 49, 0.08);
+        }
+        .track-item.no-audio .drag-handle:hover {
+            color: var(--danger);
+        }
+
         @media (max-width: 768px) {
             body { height: auto; }
             .container { flex-direction: column; }
@@ -271,7 +287,10 @@
             <p>اسحب وأفلت ملف MP3 هنا أو انقر للاختيار</p>
             <input type="file" id="file-input" accept=".mp3" style="display: none;">
         </div>
-        <div id="selected-file-name" style="margin-bottom: 1rem; color: var(--primary); font-weight: bold;"></div>
+        <div style="margin-bottom: 1rem; display: flex; align-items: center; justify-content: space-between; gap: 0.5rem;">
+            <div id="selected-file-name" style="color: var(--primary); font-weight: bold;"></div>
+            <button id="remove-audio-btn" onclick="removeAudioFromEditing(event)" style="background: var(--danger); font-size: 0.8rem; padding: 0.3rem 0.6rem; display: none;">إزالة الملف الصوتي 🗑️</button>
+        </div>
 
         <div class="form-group">
             <label>اسم الأغنية / المقطع (مطلوب)</label>
@@ -315,7 +334,10 @@
         <h2>المشغل</h2>
         
         <div class="player-box">
-            <div class="now-playing-title" id="np-title">لا يوجد مقطع قيد التشغيل</div>
+            <div class="now-playing-title" style="display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; margin-bottom: 0.5rem;">
+                <span id="np-title">لا يوجد مقطع قيد التشغيل</span>
+                <span id="np-badge"></span>
+            </div>
             <div class="now-playing-desc" id="np-desc">...</div>
             
             <div class="controls">
@@ -348,6 +370,7 @@
     let editingTrackId = null;
     let db;
     let draggingIndex = -1;
+    let shouldRemoveAudioOnSave = false;
 
     // تهيئة IndexedDB
     const request = indexedDB.open("AudioPlayerDB", 1);
@@ -419,8 +442,12 @@
         const desc = document.getElementById('track-desc').value.trim();
         const priority = parseInt(document.getElementById('track-priority').value) || 0;
 
+        if (!name) {
+            alert("اسم المقطع مطلوب.");
+            return;
+        }
+
         if (editingTrackId !== null) {
-            if (!name) { alert("اسم المقطع مطلوب."); return; }
             const trackIndex = tracks.findIndex(t => t.id === editingTrackId);
             if (trackIndex !== -1) {
                 let track = tracks[trackIndex];
@@ -428,12 +455,19 @@
                 track.desc = desc;
                 track.priority = priority;
 
+                if (shouldRemoveAudioOnSave) {
+                    track.blob = null;
+                    track.duration = 0;
+                    track.fileName = "";
+                }
+
                 if (currentFileBlob) {
                     const tempUrl = URL.createObjectURL(currentFileBlob);
                     const tempAudio = new Audio(tempUrl);
                     tempAudio.onloadedmetadata = () => {
                         track.blob = currentFileBlob;
                         track.duration = tempAudio.duration;
+                        track.fileName = currentFileBlob.name;
                         saveTrackToDB(track);
                         cancelEdit();
                     };
@@ -446,27 +480,38 @@
             }
         }
 
-        if (!name || !currentFileBlob) {
-            alert("الرجاء اختيار ملف وإدخال اسم المقطع.");
-            return;
-        }
-
-        const tempUrl = URL.createObjectURL(currentFileBlob);
-        const tempAudio = new Audio(tempUrl);
-        tempAudio.onloadedmetadata = () => {
+        // وضع الإضافة الجديد
+        if (currentFileBlob) {
+            const tempUrl = URL.createObjectURL(currentFileBlob);
+            const tempAudio = new Audio(tempUrl);
+            tempAudio.onloadedmetadata = () => {
+                const track = {
+                    id: Date.now(),
+                    name: name,
+                    desc: desc,
+                    priority: priority,
+                    blob: currentFileBlob,
+                    duration: tempAudio.duration,
+                    fileName: currentFileBlob.name,
+                    position: Date.now()
+                };
+                saveTrackToDB(track);
+                resetForm();
+            };
+        } else {
             const track = {
                 id: Date.now(),
                 name: name,
                 desc: desc,
                 priority: priority,
-                blob: currentFileBlob,
-                duration: tempAudio.duration,
-                fileName: `audio_${Date.now()}.mp3`,
+                blob: null,
+                duration: 0,
+                fileName: "",
                 position: Date.now()
             };
             saveTrackToDB(track);
             resetForm();
-        };
+        }
     }
 
     function editTrack(id, event) {
@@ -476,16 +521,32 @@
         if (!track) return;
 
         editingTrackId = id;
+        shouldRemoveAudioOnSave = false;
         document.getElementById('track-name').value = track.name;
         document.getElementById('track-desc').value = track.desc;
         document.getElementById('track-priority').value = track.priority;
-        fileNameDisplay.textContent = "الملف الحالي: " + track.fileName + " (يمكنك رفع ملف جديد لاستبداله)";
+        
+        if (track.blob) {
+            fileNameDisplay.textContent = "الملف الحالي: " + track.fileName + " (يمكنك رفع ملف جديد لاستبداله)";
+            document.getElementById('remove-audio-btn').style.display = "inline-block";
+        } else {
+            fileNameDisplay.textContent = "لا يوجد ملف صوتي مرتبط (يمكنك رفع ملف صوتي لإضافته)";
+            document.getElementById('remove-audio-btn').style.display = "none";
+        }
         currentFileBlob = null;
 
         sectionTitle.textContent = "تعديل المقطع الصوتي";
         addBtn.textContent = "حفظ التعديلات";
         addBtn.style.background = "var(--success)";
         cancelEditBtn.style.display = "inline-block";
+    }
+
+    function removeAudioFromEditing(event) {
+        if (event) event.preventDefault();
+        shouldRemoveAudioOnSave = true;
+        currentFileBlob = null;
+        fileNameDisplay.textContent = "تم إزالة الملف الصوتي (سيتم الحفظ كفصل/ملاحظة بدون صوت)";
+        document.getElementById('remove-audio-btn').style.display = 'none';
     }
 
     function cancelEdit() {
@@ -504,6 +565,32 @@
         currentFileBlob = null;
         fileNameDisplay.textContent = '';
         fileInput.value = '';
+        shouldRemoveAudioOnSave = false;
+        document.getElementById('remove-audio-btn').style.display = 'none';
+    }
+
+    function updateNowPlayingUI(track) {
+        const npTitleEl = document.getElementById('np-title');
+        const npDescEl = document.getElementById('np-desc');
+        const npBadgeEl = document.getElementById('np-badge');
+
+        if (!track) {
+            npTitleEl.textContent = "لا يوجد مقطع قيد التشغيل";
+            npDescEl.textContent = "...";
+            npBadgeEl.innerHTML = "";
+            return;
+        }
+
+        npTitleEl.textContent = track.name;
+        npDescEl.textContent = track.desc || (track.blob ? 'لا يوجد وصف' : 'لا يوجد وصف (ملاحظة/فاصل بدون صوت)');
+
+        if (track.priority > 0) {
+            const isNoAudio = !track.blob;
+            const badgeBg = isNoAudio ? 'var(--danger)' : 'var(--primary)';
+            npBadgeEl.innerHTML = `<span class="badge" style="background: ${badgeBg}; font-size: 0.85rem; padding: 3px 8px; border-radius: 4px;">#${track.priority}</span>`;
+        } else {
+            npBadgeEl.innerHTML = "";
+        }
     }
 
     function saveTrackToDB(track) {
@@ -513,8 +600,7 @@
         transaction.oncomplete = () => {
             loadTracksFromDB();
             if (currentTrackIndex !== -1 && tracks[currentTrackIndex]?.id === track.id) {
-                document.getElementById('np-title').textContent = track.name;
-                document.getElementById('np-desc').textContent = track.desc || 'لا يوجد وصف';
+                updateNowPlayingUI(track);
             }
         };
     }
@@ -551,8 +637,7 @@
             if (currentTrackIndex !== -1 && tracks[currentTrackIndex]?.id === id) {
                 audioPlayer.pause();
                 audioPlayer.src = "";
-                document.getElementById('np-title').textContent = "لا يوجد مقطع قيد التشغيل";
-                document.getElementById('np-desc').textContent = "...";
+                updateNowPlayingUI(null);
                 isPlaying = false;
                 playPauseBtn.textContent = '▶';
             }
@@ -576,8 +661,7 @@
         transaction.oncomplete = () => {
             audioPlayer.pause();
             audioPlayer.src = "";
-            document.getElementById('np-title').textContent = "لا يوجد مقطع قيد التشغيل";
-            document.getElementById('np-desc').textContent = "...";
+            updateNowPlayingUI(null);
             isPlaying = false;
             playPauseBtn.textContent = '▶';
             loadTracksFromDB();
@@ -597,11 +681,13 @@
 
         tracks.forEach((track, index) => {
             const div = document.createElement('div');
-            div.className = `track-item ${index === currentTrackIndex ? 'active' : ''}`;
+            const isNoAudio = !track.blob;
+            div.className = `track-item ${index === currentTrackIndex ? 'active' : ''} ${isNoAudio ? 'no-audio' : ''}`;
             div.onclick = () => loadAndPlay(index);
 
-            const durationFormatted = formatTime(track.duration);
-            const priorityBadge = track.priority > 0 ? `<span class="badge">#${track.priority}</span>` : '';
+            const durationFormatted = isNoAudio ? '🗒️ ملاحظة' : formatTime(track.duration);
+            const priorityBadgeColor = isNoAudio ? 'style="background: var(--danger);"' : '';
+            const priorityBadge = track.priority > 0 ? `<span class="badge" ${priorityBadgeColor}>#${track.priority}</span>` : '';
             const menuId = `menu-${track.id}`;
 
             div.innerHTML = `
@@ -729,10 +815,23 @@
     function loadAndPlay(index) {
         currentTrackIndex = index;
         const track = tracks[index];
+        
+        if (!track.blob) {
+            audioPlayer.pause();
+            audioPlayer.src = "";
+            updateNowPlayingUI(track);
+            isPlaying = false;
+            playPauseBtn.textContent = '▶';
+            progressBar.value = 0;
+            currentTimeEl.textContent = "00:00";
+            remainingTimeEl.textContent = "-00:00";
+            sortAndRenderPlaylist();
+            return;
+        }
+
         const audioUrl = URL.createObjectURL(track.blob);
         audioPlayer.src = audioUrl;
-        document.getElementById('np-title').textContent = track.name;
-        document.getElementById('np-desc').textContent = track.desc || 'لا يوجد وصف';
+        updateNowPlayingUI(track);
         audioPlayer.play();
         isPlaying = true;
         playPauseBtn.textContent = '⏸';
@@ -758,7 +857,16 @@
     audioPlayer.addEventListener('ended', () => {
         isPlaying = false;
         playPauseBtn.textContent = '▶';
-        if (currentTrackIndex < tracks.length - 1) loadAndPlay(currentTrackIndex + 1);
+        if (currentTrackIndex < tracks.length - 1) {
+            let nextIndex = currentTrackIndex + 1;
+            // تخطي المقاطع التي ليس بها ملف صوتي (ملاحظات/فواصل) تلقائياً
+            while (nextIndex < tracks.length && !tracks[nextIndex].blob) {
+                nextIndex++;
+            }
+            if (nextIndex < tracks.length) {
+                loadAndPlay(nextIndex);
+            }
+        }
     });
 
     function seekAudio() {
@@ -784,14 +892,17 @@
             const metadata = [];
             
             tracks.forEach(track => {
-                zip.file(track.fileName, track.blob);
+                if (track.blob) {
+                    zip.file(track.fileName, track.blob);
+                }
                 metadata.push({ 
                     id: track.id, 
                     name: track.name, 
                     desc: track.desc, 
                     priority: track.priority, 
                     duration: track.duration, 
-                    fileName: track.fileName 
+                    fileName: track.fileName || "",
+                    position: track.position
                 });
             });
             
@@ -847,14 +958,17 @@
             // 2. تجهيز جميع الملفات أولاً قبل فتح الاتصال بقاعدة البيانات (للحماية من إغلاق الاتصال)
             const preparedTracks = [];
             for (let meta of metadata) {
-                if (contents.files[meta.fileName]) {
+                if (meta.fileName && contents.files[meta.fileName]) {
                     const audioArrayBuffer = await contents.files[meta.fileName].async("arraybuffer");
                     meta.blob = new Blob([audioArrayBuffer], { type: "audio/mpeg" }); 
-                    if (meta.position === undefined) {
-                        meta.position = meta.id || Date.now();
-                    }
-                    preparedTracks.push(meta);
+                } else {
+                    meta.blob = null;
+                    meta.fileName = "";
                 }
+                if (meta.position === undefined) {
+                    meta.position = meta.id || Date.now();
+                }
+                preparedTracks.push(meta);
             }
             
             // 3. فتح الاتصال بـ IndexedDB الآن والحفظ دفعة واحدة وبسرعة
@@ -884,6 +998,12 @@
             event.target.value = ''; 
         }
     }
+
+    // تأكيد قبل إغلاق الصفحة لمنع فقدان البيانات غير المحفوظة
+    window.addEventListener('beforeunload', (event) => {
+        event.preventDefault();
+        event.returnValue = ''; // مطلوب لمتصفحي Chrome و Firefox
+    });
 </script>
 
 </body>
