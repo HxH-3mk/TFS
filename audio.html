@@ -269,6 +269,22 @@
             color: var(--danger);
         }
 
+        #np-original-name {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            max-width: 250px;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            transition: all 0.3s ease-in-out;
+            cursor: pointer;
+        }
+        #np-original-name:hover {
+            max-width: 600px;
+            white-space: normal;
+            color: var(--text);
+        }
+
         @media (max-width: 768px) {
             body { height: auto; }
             .container { flex-direction: column; }
@@ -339,7 +355,7 @@
                     <span id="np-title">لا يوجد مقطع قيد التشغيل</span>
                     <span id="np-badge"></span>
                 </div>
-                <span id="np-original-name" style="font-size: 0.8rem; color: var(--text-muted); max-width: 250px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;"></span>
+                <span id="np-original-name"></span>
             </div>
             <div class="now-playing-desc" id="np-desc">...</div>
             
