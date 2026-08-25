@@ -424,7 +424,7 @@ function updateFileName(input, elementId) {
                     const bookPriceHint = document.getElementById('bookPriceHint');
                     
                     if (bookPriceInput) {
-                        bookPriceInput.value = calculatedPrice;
+                        bookPriceInput.value = String(calculatedPrice);
                     }
                     if (bookPriceHint) {
                         const paperPrice = (pages / 7).toFixed(2);
