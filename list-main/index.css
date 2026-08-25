@@ -897,7 +897,7 @@ body {
 .price-value {
     font-size: 1.2rem;
     font-weight: 800;
-    color: var(--primary);
+    color: #ffffff;
     font-family: 'Plus Jakarta Sans', 'Cairo', sans-serif;
 }
 
