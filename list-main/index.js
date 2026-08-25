@@ -124,18 +124,19 @@ function createMaterialCard(material) {
             </div>`;
     
     card.innerHTML = `
-        <div class="card-preview-area" onclick="openPreviewModal('${material.fileId}', '${escapeHtml(material.name)}', 'مذكرة', '${material.fileName || ''}')">
+        <div class="card-preview-area" onclick="downloadFile('${material.fileId}', '${escapeHtml(material.fileName || material.name + '.pdf')}')" title="انقر لتحميل المذكرة فوراً">
             <span class="card-badge">مذكرة</span>
             <span class="grade-badge">${escapeHtml(material.grade || 'غير محدد')}</span>
             <div class="preview-container" id="${previewId}">
                 ${previewInner}
             </div>
-            <button class="preview-overlay-btn" type="button">
+            <button class="preview-overlay-btn" type="button" onclick="event.stopPropagation(); downloadFile('${material.fileId}', '${escapeHtml(material.fileName || material.name + '.pdf')}')">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
                 </svg>
-                معاينة سريعة
+                تحميل المذكرة
             </button>
         </div>
         <div class="details">
@@ -197,18 +198,19 @@ function createBookCard(book) {
             </div>`;
     
     card.innerHTML = `
-        <div class="card-preview-area" onclick="openPreviewModal('${book.fileId}', '${escapeHtml(book.name)}', 'كتاب', '${book.fileName || ''}')">
+        <div class="card-preview-area" onclick="downloadFile('${book.fileId}', '${escapeHtml(book.fileName || book.name + '.pdf')}')" title="انقر لتحميل الكتاب فوراً">
             <span class="card-badge" style="background: rgba(114, 9, 183, 0.85)">كتاب</span>
             <span class="grade-badge">${escapeHtml(book.grade || 'غير محدد')}</span>
             <div class="preview-container" id="${previewId}">
                 ${previewInner}
             </div>
-            <button class="preview-overlay-btn" type="button">
+            <button class="preview-overlay-btn" type="button" onclick="event.stopPropagation(); downloadFile('${book.fileId}', '${escapeHtml(book.fileName || book.name + '.pdf')}')">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                    <circle cx="12" cy="12" r="3"></circle>
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                    <polyline points="7 10 12 15 17 10"></polyline>
+                    <line x1="12" y1="15" x2="12" y2="3"></line>
                 </svg>
-                معاينة سريعة
+                تحميل الكتاب
             </button>
         </div>
         <div class="details">
@@ -251,17 +253,113 @@ function escapeHtml(text) {
         .replace(/'/g, '&#039;');
 }
 
-// Render PDF preview from IndexedDB with automatic thumbnail caching
+// Directory Handle & Local Folder Storage Management for Home Page
+let indexLinkedDirectoryHandle = null;
+
+// Retrieve stored directory handle from IndexedDB
+async function getStoredDirectoryHandle() {
+    if (!db) return null;
+    try {
+        const transaction = db.transaction(FILES_STORE, 'readonly');
+        const store = transaction.objectStore(FILES_STORE);
+        const req = store.get('__linked_dir_handle__');
+        return new Promise((resolve) => {
+            req.onsuccess = () => resolve(req.result ? req.result.handle : null);
+            req.onerror = () => resolve(null);
+        });
+    } catch (e) {
+        return null;
+    }
+}
+
+// Update the storage button text on the home page
+async function updateHomeStorageButton() {
+    if (!indexLinkedDirectoryHandle) {
+        indexLinkedDirectoryHandle = await getStoredDirectoryHandle();
+    }
+    const btnText = document.getElementById('linkFolderHomeText');
+    const btn = document.getElementById('btnLinkFolderHome');
+    if (btnText && btn) {
+        if (indexLinkedDirectoryHandle) {
+            btnText.textContent = `📁 ${indexLinkedDirectoryHandle.name}`;
+            btn.style.borderColor = 'var(--primary)';
+            btn.style.color = 'var(--primary)';
+            btn.title = `المجلد المتصل: ${indexLinkedDirectoryHandle.name} (انقر للتغيير)`;
+        } else {
+            btnText.textContent = 'مجلد محلي';
+            btn.style.borderColor = '';
+            btn.style.color = '';
+            btn.title = 'ربط مجلد المذكرات والكتب على جهازك';
+        }
+    }
+}
+
+// Helper to get PDF File/Blob either from linked local directory OR from IndexedDB
+async function getPDFBlob(fileId, rawFileName) {
+    if (!indexLinkedDirectoryHandle) {
+        indexLinkedDirectoryHandle = await getStoredDirectoryHandle();
+    }
+    
+    if (indexLinkedDirectoryHandle) {
+        try {
+            const opts = { mode: 'read' };
+            if ((await indexLinkedDirectoryHandle.queryPermission(opts)) !== 'granted') {
+                if ((await indexLinkedDirectoryHandle.requestPermission(opts)) !== 'granted') {
+                    console.warn('Directory permission not granted');
+                }
+            }
+            
+            let targetDirHandle = indexLinkedDirectoryHandle;
+            try {
+                targetDirHandle = await indexLinkedDirectoryHandle.getDirectoryHandle('sample-pdfs');
+            } catch (err) {
+                targetDirHandle = indexLinkedDirectoryHandle;
+            }
+            
+            const candidateNames = [
+                `${fileId}_${rawFileName}`,
+                rawFileName,
+                `${fileId}.pdf`,
+                rawFileName ? `${rawFileName}.pdf` : null
+            ].filter(Boolean);
+            
+            for (const candidate of candidateNames) {
+                try {
+                    const fileHandle = await targetDirHandle.getFileHandle(candidate);
+                    const file = await fileHandle.getFile();
+                    if (file) return file;
+                } catch (e) {
+                    // Try next candidate
+                }
+            }
+        } catch (dirErr) {
+            console.warn('Error reading from linked directory:', dirErr);
+        }
+    }
+    
+    // Fallback to IndexedDB files store
+    if (fileId) {
+        const fileData = await getFile(fileId);
+        if (fileData && fileData.data) {
+            return new Blob([fileData.data], { type: 'application/pdf' });
+        }
+    }
+    
+    return null;
+}
+
+// Render PDF preview from local directory or IndexedDB with automatic thumbnail caching
 async function renderPdfPreviewFromDB(item, containerId) {
     if (!item) return;
     if (item.thumbnail) return; // Already rendered as <img>!
     
     const fileId = item.fileId;
-    if (!fileId) return;
+    const fileName = item.fileName;
+    if (!fileId && !fileName) return;
     
     try {
-        const fileData = await getFile(fileId);
-        if (!fileData) return;
+        const blob = await getPDFBlob(fileId, fileName);
+        if (!blob) return;
         
         const container = document.getElementById(containerId);
         if (!container) return;
@@ -269,7 +367,6 @@ async function renderPdfPreviewFromDB(item, containerId) {
         const canvas = document.createElement('canvas');
         canvas.className = 'pdf-canvas';
         
-        const blob = new Blob([fileData.data], { type: 'application/pdf' });
         const url = URL.createObjectURL(blob);
         
         pdfjsLib.getDocument(url).promise.then(function(pdf) {
@@ -309,12 +406,128 @@ async function renderPdfPreviewFromDB(item, containerId) {
                 // Non-critical cache error
             }
         }).catch(function(error) {
-            console.warn('PDF Preview render error for', fileId, error);
+            console.warn('PDF Preview render error for', fileId || fileName, error);
         }).finally(() => {
             URL.revokeObjectURL(url);
         });
     } catch (error) {
         console.error('Error rendering PDF preview:', error);
+    }
+}
+
+// Link local data directory from Home Page
+async function linkLocalDataDirectory() {
+    try {
+        if (!window.showDirectoryPicker) {
+            alert('متصفحك لا يدعم اختيار المجلدات المباشرة. يرجى استخدام متصفح حديث مثل Google Chrome أو Microsoft Edge.');
+            return;
+        }
+        
+        const dirHandle = await window.showDirectoryPicker({
+            id: 'educational-materials',
+            mode: 'read'
+        });
+        
+        let jsonData = null;
+        let xmlDoc = null;
+        
+        try {
+            const jsonHandle = await dirHandle.getFileHandle('data.json');
+            const jsonFile = await jsonHandle.getFile();
+            const jsonText = await jsonFile.text();
+            jsonData = JSON.parse(jsonText);
+        } catch (e) {
+            try {
+                const xmlHandle = await dirHandle.getFileHandle('data.xml');
+                const xmlFile = await xmlHandle.getFile();
+                const xmlText = await xmlFile.text();
+                const parser = new DOMParser();
+                xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+            } catch (err) {
+                alert('لم يتم العثور على ملف data.json أو data.xml داخل المجلد المختار.\nيرجى التأكد من استخراج ملفات النسخة الاحتياطية واختيار المجلد الصحيح.');
+                return;
+            }
+        }
+        
+        // Clear metadata stores (keep files store empty to save memory!)
+        const transMat = db.transaction(MATERIALS_STORE, 'readwrite');
+        transMat.objectStore(MATERIALS_STORE).clear();
+        const transBook = db.transaction(BOOKS_STORE, 'readwrite');
+        transBook.objectStore(BOOKS_STORE).clear();
+        const transFile = db.transaction(FILES_STORE, 'readwrite');
+        transFile.objectStore(FILES_STORE).clear();
+        
+        // Save directory handle
+        indexLinkedDirectoryHandle = dirHandle;
+        const transSave = db.transaction(FILES_STORE, 'readwrite');
+        transSave.objectStore(FILES_STORE).put({ id: '__linked_dir_handle__', handle: dirHandle, name: dirHandle.name });
+        
+        // Import Metadata
+        if (jsonData) {
+            if (Array.isArray(jsonData.materials)) {
+                for (const m of jsonData.materials) {
+                    await updateItem(MATERIALS_STORE, m);
+                }
+            }
+            if (Array.isArray(jsonData.books)) {
+                for (const b of jsonData.books) {
+                    await updateItem(BOOKS_STORE, b);
+                }
+            }
+        } else if (xmlDoc) {
+            const materialNodes = xmlDoc.querySelectorAll('materials > material');
+            for (const node of materialNodes) {
+                const id = node.getAttribute('id') || Date.now().toString();
+                const getField = (f) => node.querySelector(f) ? node.querySelector(f).textContent : '';
+                const fileName = getField('file');
+                const rawName = fileName ? fileName.split('_').slice(1).join('_') : '';
+                
+                const material = {
+                    id: id,
+                    name: getField('name'),
+                    school: getField('school'),
+                    teacher: getField('teacher'),
+                    grade: getField('grade'),
+                    sides: getField('sides'),
+                    price: getField('price'),
+                    fileName: rawName || fileName,
+                    fileId: id,
+                    thumbnail: getField('thumbnail') || null,
+                    dateAdded: new Date().toISOString()
+                };
+                await updateItem(MATERIALS_STORE, material);
+            }
+            
+            const bookNodes = xmlDoc.querySelectorAll('books > book');
+            for (const node of bookNodes) {
+                const id = node.getAttribute('id') || Date.now().toString();
+                const getField = (f) => node.querySelector(f) ? node.querySelector(f).textContent : '';
+                const fileName = getField('file');
+                const rawName = fileName ? fileName.split('_').slice(1).join('_') : '';
+                
+                const book = {
+                    id: id,
+                    name: getField('name'),
+                    grade: getField('grade'),
+                    price: getField('price'),
+                    fileName: rawName || fileName,
+                    fileId: id,
+                    thumbnail: getField('thumbnail') || null,
+                    dateAdded: new Date().toISOString()
+                };
+                await updateItem(BOOKS_STORE, book);
+            }
+        }
+        
+        await loadEducationalData();
+        await updateHomeStorageButton();
+    } catch (error) {
+        if (error.name === 'AbortError') {
+            // User cancelled picker dialog
+            return;
+        }
+        console.error('Error linking local directory on home:', error);
+        alert('حدث خطأ أثناء ربط المجلد: ' + error.message);
     }
 }
 
@@ -338,15 +551,14 @@ async function openPreviewModal(fileId, title, badgeText, fileName) {
         downloadFile(fileId, fileName || (title + '.pdf'));
     };
     
-    if (fileId) {
+    if (fileId || fileName) {
         try {
-            const fileData = await getFile(fileId);
-            if (fileData) {
-                const blob = new Blob([fileData.data], { type: 'application/pdf' });
+            const blob = await getPDFBlob(fileId, fileName);
+            if (blob) {
                 const url = URL.createObjectURL(blob);
                 
                 pdfjsLib.getDocument(url).promise.then(pdf => pdf.getPage(1)).then(page => {
-                    const viewport = page.getViewport({ scale: 1.2 });
+                    const viewport = page.getViewport({ scale: 1.3 });
                     const canvas = document.createElement('canvas');
                     canvas.width = viewport.width;
                     canvas.height = viewport.height;
@@ -366,7 +578,7 @@ async function openPreviewModal(fileId, title, badgeText, fileName) {
                     URL.revokeObjectURL(url);
                 });
             } else {
-                modalCanvasContainer.innerHTML = '<p style="color:var(--text-muted)">الملف غير متوفر في الذاكرة</p>';
+                modalCanvasContainer.innerHTML = '<p style="color:var(--text-muted)">الملف غير متوفر حالياً. يرجى التأكد من ربط مجلد البيانات المحلي.</p>';
             }
         } catch (e) {
             modalCanvasContainer.innerHTML = '<p style="color:var(--text-muted)">حدث خطأ أثناء تحميل المعاينة</p>';
@@ -387,13 +599,12 @@ function closePreviewModal(e) {
 // Download a file
 async function downloadFile(fileId, fileName) {
     try {
-        const fileData = await getFile(fileId);
-        if (!fileData) {
-            alert('عذراً، الملف غير موجود في قاعدة البيانات.');
+        const blob = await getPDFBlob(fileId, fileName);
+        if (!blob) {
+            alert('عذراً، ملف الـ PDF غير متوفر. إذا كنت تستخدم مجلد محلي، يرجى النقر على زر "مجلد محلي" في الأعلى وإعادة تحديد المجلد.');
             return;
         }
         
-        const blob = new Blob([fileData.data], { type: 'application/pdf' });
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
@@ -592,16 +803,31 @@ function applyFilterAndRender() {
     container.innerHTML = '';
     
     if (filtered.length === 0) {
-        container.innerHTML = `
-            <div class="empty-state">
-                <svg viewBox="0 0 24 24" width="54" height="54" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <circle cx="12" cy="12" r="10"></circle>
-                    <line x1="8" y1="12" x2="16" y2="12"></line>
-                </svg>
-                <div class="empty-title">لا توجد مواد دراسية مطابقة</div>
-                <div class="empty-subtitle">${currentSearchQuery ? 'جرب البحث بكلمات أخرى أو تحقق من الحروف' : 'لم تتم إضافة أي مذكرات أو كتب دراسية بعد لهذا الاختيار'}</div>
-            </div>
-        `;
+        if (!currentSearchQuery && currentCategory === 'all' && currentSelectedGrade === 'all') {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24" width="54" height="54" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
+                    </svg>
+                    <div class="empty-title">لا توجد مواد مضافة حالياً</div>
+                    <div class="empty-subtitle">إذا قمت بفك ضغط ملف النسخة الاحتياطية على جهازك، يمكنك ربط المجلد مباشرة لتصفح جميع الكتب والمذكرات فوراً وبدون استهلاك ذاكرة المتصفح</div>
+                    <button type="button" class="nav-btn nav-btn-primary" style="margin-top:1.25rem; display:inline-flex; align-items:center; gap:0.5rem; padding:0.65rem 1.4rem; cursor:pointer; font-size:0.95rem;" onclick="linkLocalDataDirectory()">
+                        <span>📂 تحديد وربط مجلد المواد من الكمبيوتر</span>
+                    </button>
+                </div>
+            `;
+        } else {
+            container.innerHTML = `
+                <div class="empty-state">
+                    <svg viewBox="0 0 24 24" width="54" height="54" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <circle cx="12" cy="12" r="10"></circle>
+                        <line x1="8" y1="12" x2="16" y2="12"></line>
+                    </svg>
+                    <div class="empty-title">لا توجد مواد دراسية مطابقة</div>
+                    <div class="empty-subtitle">${currentSearchQuery ? 'جرب البحث بكلمات أخرى أو تحقق من الحروف' : 'لم تتم إضافة أي مذكرات أو كتب دراسية بعد لهذا الاختيار'}</div>
+                </div>
+            `;
+        }
         return;
     }
     
@@ -790,8 +1016,8 @@ function toggleTheme() {
     localStorage.setItem('theme', newTheme);
 }
 
-// Load and display items when page loads
-document.addEventListener('DOMContentLoaded', async function() {
+// Load and display educational items from database
+async function loadEducationalData() {
     try {
         await initDB();
         
@@ -805,12 +1031,17 @@ document.addEventListener('DOMContentLoaded', async function() {
         
         updateBadgeCounters();
         applyFilterAndRender();
+        await updateHomeStorageButton();
     } catch (error) {
         console.warn('Data load notice / fallback:', error);
         allItems = [];
         updateBadgeCounters();
         applyFilterAndRender();
+        await updateHomeStorageButton();
     }
-});
+}
+
+// Load items when page loads
+document.addEventListener('DOMContentLoaded', loadEducationalData);
 
 

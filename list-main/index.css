@@ -895,7 +895,7 @@ body {
 }
 
 .price-value {
-    font-size: 1.2rem;
+    font-size: 2.2rem;
     font-weight: 800;
     color: #ffffff;
     font-family: 'Plus Jakarta Sans', 'Cairo', sans-serif;
@@ -903,9 +903,8 @@ body {
 
 .download-link {
     display: inline-flex;
-        font-family: unset;
-
     align-items: center;
+    font-family: 'Cairo';
     justify-content: center;
     gap: 0.5rem;
     background: var(--primary-gradient);
@@ -913,7 +912,7 @@ body {
     text-decoration: none;
     padding: 0.65rem 1.2rem;
     border-radius: var(--radius-md);
-    font-weight: 600;
+    font-weight: 900;
     font-size: 0.88rem;
     transition: var(--transition-normal);
     border: none;

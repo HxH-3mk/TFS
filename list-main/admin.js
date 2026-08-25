@@ -61,6 +61,9 @@ async function loadSavedItems() {
         
         // Update stats
         updateAdminStats();
+        
+        // Update storage status badge
+        await updateStorageStatusBadge();
     } catch (error) {
         console.error('خطأ في تحميل البيانات:', error);
         showNotification('حدث خطأ في تحميل البيانات');
@@ -990,12 +993,265 @@ function hideLoading() {
 }
 
 
-// تصدير البيانات كملف XML
+// Directory Handle & Local Folder Storage Management
+let linkedDirectoryHandle = null;
+
+// Persist directory handle to IndexedDB
+async function saveDirectoryHandle(handle) {
+    if (!db || !handle) return;
+    try {
+        const transaction = db.transaction(FILES_STORE, 'readwrite');
+        const store = transaction.objectStore(FILES_STORE);
+        store.put({ id: '__linked_dir_handle__', handle: handle, name: handle.name, date: new Date().toISOString() });
+    } catch (e) {
+        console.warn('Could not persist directory handle:', e);
+    }
+}
+
+// Retrieve stored directory handle from IndexedDB
+async function getStoredDirectoryHandle() {
+    if (!db) return null;
+    try {
+        const transaction = db.transaction(FILES_STORE, 'readonly');
+        const store = transaction.objectStore(FILES_STORE);
+        const req = store.get('__linked_dir_handle__');
+        return new Promise((resolve) => {
+            req.onsuccess = () => resolve(req.result ? req.result.handle : null);
+            req.onerror = () => resolve(null);
+        });
+    } catch (e) {
+        return null;
+    }
+}
+
+// Update the storage status badge and description
+async function updateStorageStatusBadge() {
+    if (!linkedDirectoryHandle) {
+        linkedDirectoryHandle = await getStoredDirectoryHandle();
+    }
+    
+    const badge = document.getElementById('storageStatusText');
+    const desc = document.getElementById('linkedFolderStatusDesc');
+    const btnDisconnect = document.getElementById('btnDisconnectFolder');
+    
+    if (linkedDirectoryHandle) {
+        if (badge) {
+            badge.textContent = `📂 مجلد محلي: ${linkedDirectoryHandle.name}`;
+            badge.style.color = 'var(--primary)';
+        }
+        if (desc) {
+            desc.innerHTML = `<span style="color:var(--success); font-weight:700;">✅ متصل بمجلد الكمبيوتر:</span> <strong>${escapeHtml(linkedDirectoryHandle.name)}</strong> (ملفات الـ PDF تُقرأ مباشرة من القرص بدون شغل ذاكرة المتصفح).`;
+        }
+        if (btnDisconnect) btnDisconnect.style.display = 'inline-flex';
+    } else {
+        if (badge) {
+            badge.textContent = 'ذاكرة المتصفح (IndexedDB)';
+            badge.style.color = 'var(--success)';
+        }
+        if (desc) {
+            desc.textContent = 'لم يتم ربط مجلد محلي بعد. البيانات تُقرأ حالياً من ذاكرة المتصفح.';
+        }
+        if (btnDisconnect) btnDisconnect.style.display = 'none';
+    }
+}
+
+// Disconnect local folder and switch back to standard IndexedDB mode
+async function disconnectLocalFolder() {
+    if (!confirm('هل تريد فصل المجلد المحلي والعودة للتخزين الافتراضي؟')) return;
+    try {
+        if (db) {
+            const transaction = db.transaction(FILES_STORE, 'readwrite');
+            const store = transaction.objectStore(FILES_STORE);
+            store.delete('__linked_dir_handle__');
+        }
+        linkedDirectoryHandle = null;
+        await updateStorageStatusBadge();
+        showNotification('تم فصل المجلد المحلي بنجاح');
+    } catch (e) {
+        console.error('Error disconnecting folder:', e);
+    }
+}
+
+// Helper to get PDF File/Blob either from linked local directory OR from IndexedDB
+async function getPDFBlob(fileId, rawFileName) {
+    if (!linkedDirectoryHandle) {
+        linkedDirectoryHandle = await getStoredDirectoryHandle();
+    }
+    
+    if (linkedDirectoryHandle) {
+        try {
+            const opts = { mode: 'read' };
+            if ((await linkedDirectoryHandle.queryPermission(opts)) !== 'granted') {
+                if ((await linkedDirectoryHandle.requestPermission(opts)) !== 'granted') {
+                    console.warn('Directory permission not granted');
+                }
+            }
+            
+            let targetDirHandle = linkedDirectoryHandle;
+            try {
+                targetDirHandle = await linkedDirectoryHandle.getDirectoryHandle('sample-pdfs');
+            } catch (err) {
+                targetDirHandle = linkedDirectoryHandle;
+            }
+            
+            const candidateNames = [
+                `${fileId}_${rawFileName}`,
+                rawFileName,
+                `${fileId}.pdf`,
+                rawFileName ? `${rawFileName}.pdf` : null
+            ].filter(Boolean);
+            
+            for (const candidate of candidateNames) {
+                try {
+                    const fileHandle = await targetDirHandle.getFileHandle(candidate);
+                    const file = await fileHandle.getFile();
+                    if (file) return file;
+                } catch (e) {
+                    // Try next candidate
+                }
+            }
+        } catch (dirErr) {
+            console.warn('Error reading from linked directory:', dirErr);
+        }
+    }
+    
+    // Fallback to IndexedDB files store
+    if (fileId) {
+        const fileData = await getFile(fileId);
+        if (fileData && fileData.data) {
+            return new Blob([fileData.data], { type: 'application/pdf' });
+        }
+    }
+    
+    return null;
+}
+
+// Link local data directory (Zero-RAM mode)
+async function linkLocalDataDirectory() {
+    try {
+        if (!window.showDirectoryPicker) {
+            alert('متصفحك لا يدعم خاصية اختيار المجلدات المباشرة. يرجى استخدام متصفح حديث مثل Google Chrome أو Microsoft Edge.');
+            return;
+        }
+        
+        const dirHandle = await window.showDirectoryPicker({
+            id: 'educational-materials',
+            mode: 'read'
+        });
+        
+        showLoading('جاري قراءة البيانات من المجلد المحلي...');
+        
+        let jsonData = null;
+        let xmlDoc = null;
+        
+        // 1. Try reading data.json
+        try {
+            const jsonHandle = await dirHandle.getFileHandle('data.json');
+            const jsonFile = await jsonHandle.getFile();
+            const jsonText = await jsonFile.text();
+            jsonData = JSON.parse(jsonText);
+        } catch (e) {
+            // 2. Fallback to data.xml
+            try {
+                const xmlHandle = await dirHandle.getFileHandle('data.xml');
+                const xmlFile = await xmlHandle.getFile();
+                const xmlText = await xmlFile.text();
+                const parser = new DOMParser();
+                xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+            } catch (err) {
+                hideLoading();
+                alert('لم يتم العثور على ملف data.json أو data.xml داخل المجلد المختار.\nيرجى التأكد من استخراج ملفات النسخة الاحتياطية واختيار المجلد الصحيح.');
+                return;
+            }
+        }
+        
+        // Clear metadata stores (keep files store empty to save memory!)
+        await clearStore(MATERIALS_STORE);
+        await clearStore(BOOKS_STORE);
+        await clearStore(FILES_STORE);
+        
+        // Save directory handle
+        linkedDirectoryHandle = dirHandle;
+        await saveDirectoryHandle(dirHandle);
+        
+        // Import Metadata
+        if (jsonData) {
+            if (Array.isArray(jsonData.materials)) {
+                for (const m of jsonData.materials) {
+                    await addItem(MATERIALS_STORE, m);
+                }
+            }
+            if (Array.isArray(jsonData.books)) {
+                for (const b of jsonData.books) {
+                    await addItem(BOOKS_STORE, b);
+                }
+            }
+        } else if (xmlDoc) {
+            const materialNodes = xmlDoc.querySelectorAll('materials > material');
+            for (const node of materialNodes) {
+                const id = node.getAttribute('id') || Date.now().toString();
+                const getField = (f) => node.querySelector(f) ? node.querySelector(f).textContent : '';
+                const fileName = getField('file');
+                const rawName = fileName ? fileName.split('_').slice(1).join('_') : '';
+                
+                const material = {
+                    id: id,
+                    name: getField('name'),
+                    school: getField('school'),
+                    teacher: getField('teacher'),
+                    grade: getField('grade'),
+                    sides: getField('sides'),
+                    price: getField('price'),
+                    fileName: rawName || fileName,
+                    fileId: id,
+                    thumbnail: getField('thumbnail') || null,
+                    dateAdded: new Date().toISOString()
+                };
+                await addItem(MATERIALS_STORE, material);
+            }
+            
+            const bookNodes = xmlDoc.querySelectorAll('books > book');
+            for (const node of bookNodes) {
+                const id = node.getAttribute('id') || Date.now().toString();
+                const getField = (f) => node.querySelector(f) ? node.querySelector(f).textContent : '';
+                const fileName = getField('file');
+                const rawName = fileName ? fileName.split('_').slice(1).join('_') : '';
+                
+                const book = {
+                    id: id,
+                    name: getField('name'),
+                    grade: getField('grade'),
+                    price: getField('price'),
+                    fileName: rawName || fileName,
+                    fileId: id,
+                    thumbnail: getField('thumbnail') || null,
+                    dateAdded: new Date().toISOString()
+                };
+                await addItem(BOOKS_STORE, book);
+            }
+        }
+        
+        hideLoading();
+        showNotification(`تم ربط المجلد "${dirHandle.name}" بنجاح بدون استهلاك ذاكرة المتصفح!`);
+        await loadSavedItems();
+        await updateStorageStatusBadge();
+    } catch (error) {
+        console.error('Error linking local directory:', error);
+        hideLoading();
+        if (error.name !== 'AbortError') {
+            alert('حدث خطأ أثناء ربط المجلد المحلي: ' + error.message);
+        }
+    }
+}
+
+// تصدير البيانات وحفظها مباشرة في مجلد على القرص الصلب
 async function exportDataAsXML() {
     try {
-        showLoading('جاري تصدير البيانات والملفات...');
+        if (!window.showDirectoryPicker) {
+            alert('متصفحك لا يدعم هذه الخاصية. يرجى استخدام متصفح Google Chrome أو Microsoft Edge.');
+            return;
+        }
         
-        // إنشاء المجلد sample-pdfs إذا لم يكن موجودًا بالفعل
         let dirHandle;
         try {
             dirHandle = await window.showDirectoryPicker({
@@ -1003,32 +1259,34 @@ async function exportDataAsXML() {
                 id: 'educational-materials'
             });
         } catch (error) {
-            console.error('خطأ في اختيار المجلد:', error);
-            hideLoading();
+            if (error.name === 'AbortError') return;
             alert('يرجى اختيار مجلد لحفظ البيانات والملفات.');
             return;
         }
 
-        // إنشاء مجلد sample-pdfs إذا لم يكن موجودًا
-        let pdfsDirHandle;
-        try {
-            pdfsDirHandle = await dirHandle.getDirectoryHandle('sample-pdfs', { create: true });
-        } catch (error) {
-            console.error('خطأ في إنشاء مجلد sample-pdfs:', error);
-            hideLoading();
-            alert('حدث خطأ في إنشاء مجلد sample-pdfs');
-            return;
-        }
+        showLoading('جاري حفظ البيانات والملفات في المجلد المحدد...');
 
-        // جلب البيانات من IndexedDB
+        let pdfsDirHandle = await dirHandle.getDirectoryHandle('sample-pdfs', { create: true });
+
         const materials = await getAllItems(MATERIALS_STORE);
         const books = await getAllItems(BOOKS_STORE);
 
-        // إنشاء XML
+        // 1. JSON Export
+        const exportObj = {
+            exportDate: new Date().toISOString(),
+            version: '2.0',
+            materials: materials,
+            books: books
+        };
+        const jsonHandle = await dirHandle.getFileHandle('data.json', { create: true });
+        const jsonWritable = await jsonHandle.createWritable();
+        await jsonWritable.write(JSON.stringify(exportObj, null, 2));
+        await jsonWritable.close();
+
+        // 2. XML Export
         const xmlDoc = document.implementation.createDocument(null, 'data', null);
         const root = xmlDoc.documentElement;
 
-        // إضافة قسم المذكرات
         const materialsElem = xmlDoc.createElement('materials');
         root.appendChild(materialsElem);
 
@@ -1036,7 +1294,6 @@ async function exportDataAsXML() {
             const materialElem = xmlDoc.createElement('material');
             materialElem.setAttribute('id', material.id);
 
-            // إضافة حقول المذكرة
             const addField = (name, value) => {
                 const elem = xmlDoc.createElement(name);
                 elem.textContent = value || '';
@@ -1049,23 +1306,21 @@ async function exportDataAsXML() {
             addField('grade', material.grade);
             addField('sides', material.sides);
             addField('price', material.price);
+            if (material.thumbnail) addField('thumbnail', material.thumbnail);
 
-            // حفظ الملف PDF
             if (material.fileId) {
-                const fileData = await getFile(material.fileId);
-                if (fileData) {
-                    const fileName = `${material.id}_${material.fileName}`;
+                const pdfBlob = await getPDFBlob(material.fileId, material.fileName);
+                if (pdfBlob) {
+                    const fileName = `${material.id}_${material.fileName || 'material.pdf'}`;
                     addField('file', fileName);
-
-                    // حفظ ملف PDF في مجلد sample-pdfs
-                    await savePDFFile(pdfsDirHandle, fileName, fileData.data);
+                    const buf = await pdfBlob.arrayBuffer();
+                    await savePDFFile(pdfsDirHandle, fileName, buf);
                 }
             }
 
             materialsElem.appendChild(materialElem);
         }
 
-        // إضافة قسم الكتب
         const booksElem = xmlDoc.createElement('books');
         root.appendChild(booksElem);
 
@@ -1073,7 +1328,6 @@ async function exportDataAsXML() {
             const bookElem = xmlDoc.createElement('book');
             bookElem.setAttribute('id', book.id);
 
-            // إضافة حقول الكتاب
             const addField = (name, value) => {
                 const elem = xmlDoc.createElement(name);
                 elem.textContent = value || '';
@@ -1083,44 +1337,40 @@ async function exportDataAsXML() {
             addField('name', book.name);
             addField('grade', book.grade);
             addField('price', book.price);
+            if (book.thumbnail) addField('thumbnail', book.thumbnail);
 
-            // حفظ الملف PDF
             if (book.fileId) {
-                const fileData = await getFile(book.fileId);
-                if (fileData) {
-                    const fileName = `${book.id}_${book.fileName}`;
+                const pdfBlob = await getPDFBlob(book.fileId, book.fileName);
+                if (pdfBlob) {
+                    const fileName = `${book.id}_${book.fileName || 'book.pdf'}`;
                     addField('file', fileName);
-
-                    // حفظ ملف PDF في مجلد sample-pdfs
-                    await savePDFFile(pdfsDirHandle, fileName, fileData.data);
+                    const buf = await pdfBlob.arrayBuffer();
+                    await savePDFFile(pdfsDirHandle, fileName, buf);
                 }
             }
 
             booksElem.appendChild(bookElem);
         }
 
-        // تحويل XML إلى نص
         const serializer = new XMLSerializer();
         const xmlString = serializer.serializeToString(xmlDoc);
 
-        // حفظ ملف XML
-        try {
-            const xmlHandle = await dirHandle.getFileHandle('data.xml', { create: true });
-            const writable = await xmlHandle.createWritable();
-            await writable.write(xmlString);
-            await writable.close();
-            
-            hideLoading();
-            alert('تم تصدير البيانات والملفات بنجاح');
-        } catch (error) {
-            console.error('خطأ في حفظ ملف XML:', error);
-            hideLoading();
-            alert('حدث خطأ في حفظ ملف البيانات XML');
-        }
+        const xmlHandle = await dirHandle.getFileHandle('data.xml', { create: true });
+        const xmlWritable = await xmlHandle.createWritable();
+        await xmlWritable.write(xmlString);
+        await xmlWritable.close();
+
+        // Also link this directory immediately!
+        linkedDirectoryHandle = dirHandle;
+        await saveDirectoryHandle(dirHandle);
+        await updateStorageStatusBadge();
+
+        hideLoading();
+        showNotification('تم حفظ وتصدير كافة الملفات والبيانات إلى المجلد بنجاح!');
     } catch (error) {
         console.error('خطأ في تصدير البيانات:', error);
         hideLoading();
-        alert('حدث خطأ أثناء تصدير البيانات');
+        alert('حدث خطأ أثناء حفظ البيانات في المجلد: ' + error.message);
     }
 }
 
@@ -1133,212 +1383,37 @@ async function savePDFFile(dirHandle, fileName, data) {
         await writable.close();
     } catch (error) {
         console.error('خطأ في حفظ ملف PDF:', error, fileName);
-        throw error;
     }
-}
-
-// استيراد البيانات من ملف XML
-async function importDataFromXML() {
-    try {
-        showLoading('جاري استيراد البيانات والملفات...');
-        
-        // اختيار المجلد الذي يحتوي على data.xml
-        let dirHandle;
-        try {
-            dirHandle = await window.showDirectoryPicker({
-                id: 'educational-materials'
-            });
-        } catch (error) {
-            console.error('خطأ في اختيار المجلد:', error);
-            hideLoading();
-            alert('يرجى اختيار المجلد الذي يحتوي على ملفات البيانات');
-            return;
-        }
-
-        // التحقق من وجود ملف data.xml
-        let xmlFileHandle;
-        try {
-            xmlFileHandle = await dirHandle.getFileHandle('data.xml');
-        } catch (error) {
-            console.error('خطأ: الملف data.xml غير موجود في المجلد المحدد:', error);
-            hideLoading();
-            alert('الملف data.xml غير موجود في المجلد المحدد');
-            return;
-        }
-
-        // التحقق من وجود مجلد sample-pdfs
-        let pdfsDirHandle;
-        try {
-            pdfsDirHandle = await dirHandle.getDirectoryHandle('sample-pdfs');
-        } catch (error) {
-            console.error('خطأ: مجلد sample-pdfs غير موجود:', error);
-            hideLoading();
-            alert('مجلد sample-pdfs غير موجود في المجلد المحدد');
-            return;
-        }
-
-        // قراءة ملف XML
-        const file = await xmlFileHandle.getFile();
-        const xmlText = await file.text();
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(xmlText, 'text/xml');
-
-        // مسح قواعد البيانات الحالية
-        await clearStore(MATERIALS_STORE);
-        await clearStore(BOOKS_STORE);
-        await clearStore(FILES_STORE);
-
-        // استيراد المذكرات
-        const materialNodes = xmlDoc.querySelectorAll('materials > material');
-        for (const materialNode of materialNodes) {
-            const id = materialNode.getAttribute('id');
-            const getField = (fieldName) => {
-                const field = materialNode.querySelector(fieldName);
-                return field ? field.textContent : '';
-            };
-
-            const material = {
-                id: id,
-                name: getField('name'),
-                school: getField('school'),
-                teacher: getField('teacher'),
-                grade: getField('grade'),
-                sides: getField('sides'),
-                price: getField('price'),
-                fileName: '',
-                fileId: id,
-                dateAdded: new Date().toISOString()
-            };
-
-            // استيراد ملف PDF المرتبط
-            const fileName = getField('file');
-            if (fileName) {
-                material.fileName = fileName.split('_').slice(1).join('_'); // إزالة معرف الملف من اسم الملف
-                
-                try {
-                    const fileData = await readPDFFile(pdfsDirHandle, fileName);
-                    await storeFileData(id, material.fileName, fileData);
-                } catch (error) {
-                    console.error('خطأ في استيراد ملف PDF للمذكرة:', error);
-                }
-            }
-
-            await addItem(MATERIALS_STORE, material);
-        }
-
-        // استيراد الكتب
-        const bookNodes = xmlDoc.querySelectorAll('books > book');
-        for (const bookNode of bookNodes) {
-            const id = bookNode.getAttribute('id');
-            const getField = (fieldName) => {
-                const field = bookNode.querySelector(fieldName);
-                return field ? field.textContent : '';
-            };
-
-            const book = {
-                id: id,
-                name: getField('name'),
-                grade: getField('grade'),
-                price: getField('price'),
-                fileName: '',
-                fileId: id,
-                dateAdded: new Date().toISOString()
-            };
-
-            // استيراد ملف PDF المرتبط
-            const fileName = getField('file');
-            if (fileName) {
-                book.fileName = fileName.split('_').slice(1).join('_'); // إزالة معرف الملف من اسم الملف
-                
-                try {
-                    const fileData = await readPDFFile(pdfsDirHandle, fileName);
-                    await storeFileData(id, book.fileName, fileData);
-                } catch (error) {
-                    console.error('خطأ في استيراد ملف PDF للكتاب:', error);
-                }
-            }
-
-            await addItem(BOOKS_STORE, book);
-        }
-
-        hideLoading();
-        alert('تم استيراد البيانات بنجاح');
-        
-        // إعادة تحميل الصفحة لعرض البيانات المستوردة
-        await loadSavedItems();
-    } catch (error) {
-        console.error('خطأ في استيراد البيانات:', error);
-        hideLoading();
-        alert('حدث خطأ أثناء استيراد البيانات');
-    }
-}
-
-// قراءة ملف PDF
-async function readPDFFile(dirHandle, fileName) {
-    try {
-        const fileHandle = await dirHandle.getFileHandle(fileName);
-        const file = await fileHandle.getFile();
-        return await file.arrayBuffer();
-    } catch (error) {
-        console.error('خطأ في قراءة ملف PDF:', error, fileName);
-        throw error;
-    }
-}
-
-// تخزين بيانات الملف في IndexedDB
-async function storeFileData(id, fileName, data) {
-    const fileData = {
-        id: id,
-        name: fileName,
-        type: 'application/pdf',
-        data: data
-    };
-    
-    await addItem(FILES_STORE, fileData);
-}
-
-// مسح مخزن في IndexedDB
-function clearStore(storeName) {
-    return new Promise((resolve, reject) => {
-        const transaction = db.transaction(storeName, 'readwrite');
-        const store = transaction.objectStore(storeName);
-        const request = store.clear();
-        
-        request.onsuccess = () => {
-            resolve();
-        };
-        
-        request.onerror = (event) => {
-            reject(event.target.error);
-        };
-    });
 }
 
 // تصدير البيانات كملف واحد (ZIP)
 async function exportDataAsZip() {
     try {
-        showLoading('جاري تصدير البيانات والملفات...');
+        showLoading('جاري تجميع وضغط النسخة الاحتياطية (ZIP)...');
         
-        // تحميل مكتبة JSZip إذا لم تكن محملة بالفعل
         if (typeof JSZip === 'undefined') {
             await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
         }
         
-        // جلب البيانات من IndexedDB
         const materials = await getAllItems(MATERIALS_STORE);
         const books = await getAllItems(BOOKS_STORE);
         
-        // إنشاء XML
+        const zip = new JSZip();
+        const pdfFolder = zip.folder('sample-pdfs');
+        
+        // 1. data.json
+        const exportObj = {
+            exportDate: new Date().toISOString(),
+            version: '2.0',
+            materials: materials,
+            books: books
+        };
+        zip.file('data.json', JSON.stringify(exportObj, null, 2));
+
+        // 2. data.xml
         const xmlDoc = document.implementation.createDocument(null, 'data', null);
         const root = xmlDoc.documentElement;
         
-        // إنشاء JSZip
-        const zip = new JSZip();
-        
-        // إنشاء مجلد sample-pdfs
-        const pdfFolder = zip.folder('sample-pdfs');
-        
-        // إضافة قسم المذكرات
         const materialsElem = xmlDoc.createElement('materials');
         root.appendChild(materialsElem);
         
@@ -1346,7 +1421,6 @@ async function exportDataAsZip() {
             const materialElem = xmlDoc.createElement('material');
             materialElem.setAttribute('id', material.id);
             
-            // إضافة حقول المذكرة
             const addField = (name, value) => {
                 const elem = xmlDoc.createElement(name);
                 elem.textContent = value || '';
@@ -1359,23 +1433,21 @@ async function exportDataAsZip() {
             addField('grade', material.grade);
             addField('sides', material.sides);
             addField('price', material.price);
+            if (material.thumbnail) addField('thumbnail', material.thumbnail);
             
-            // حفظ الملف PDF
             if (material.fileId) {
-                const fileData = await getFile(material.fileId);
-                if (fileData) {
-                    const fileName = `${material.id}_${material.fileName}`;
+                const pdfBlob = await getPDFBlob(material.fileId, material.fileName);
+                if (pdfBlob) {
+                    const fileName = `${material.id}_${material.fileName || 'material.pdf'}`;
                     addField('file', fileName);
-                    
-                    // إضافة PDF إلى ملف الـ ZIP
-                    pdfFolder.file(fileName, fileData.data);
+                    const buf = await pdfBlob.arrayBuffer();
+                    pdfFolder.file(fileName, buf);
                 }
             }
             
             materialsElem.appendChild(materialElem);
         }
         
-        // إضافة قسم الكتب
         const booksElem = xmlDoc.createElement('books');
         root.appendChild(booksElem);
         
@@ -1383,7 +1455,6 @@ async function exportDataAsZip() {
             const bookElem = xmlDoc.createElement('book');
             bookElem.setAttribute('id', book.id);
             
-            // إضافة حقول الكتاب
             const addField = (name, value) => {
                 const elem = xmlDoc.createElement(name);
                 elem.textContent = value || '';
@@ -1393,201 +1464,192 @@ async function exportDataAsZip() {
             addField('name', book.name);
             addField('grade', book.grade);
             addField('price', book.price);
+            if (book.thumbnail) addField('thumbnail', book.thumbnail);
             
-            // حفظ الملف PDF
             if (book.fileId) {
-                const fileData = await getFile(book.fileId);
-                if (fileData) {
-                    const fileName = `${book.id}_${book.fileName}`;
+                const pdfBlob = await getPDFBlob(book.fileId, book.fileName);
+                if (pdfBlob) {
+                    const fileName = `${book.id}_${book.fileName || 'book.pdf'}`;
                     addField('file', fileName);
-                    
-                    // إضافة PDF إلى ملف الـ ZIP
-                    pdfFolder.file(fileName, fileData.data);
+                    const buf = await pdfBlob.arrayBuffer();
+                    pdfFolder.file(fileName, buf);
                 }
             }
             
             booksElem.appendChild(bookElem);
         }
         
-        // تحويل XML إلى نص
         const serializer = new XMLSerializer();
         const xmlString = serializer.serializeToString(xmlDoc);
-        
-        // إضافة ملف XML إلى ZIP
         zip.file('data.xml', xmlString);
+
+        // README text file explaining how to link the unzipped folder
+        const readmeContent = `تعليمات الاستعادة الخفيفة (بدون استهلاك ذاكرة المتصفح):\n1. قم بفك ضغط هذا الملف في أي مكان على جهازك (مثال: المستندات أو القرص D).\n2. افتح صفحة لوحة الإدارة أو الموقع الرئيسي.\n3. اختر "النسخ الاحتياطي ومجلد الجهاز" ثم اضغط "تحديد / ربط مجلد من الكمبيوتر" واختر المجلد المفكوك.\n4. سيعمل الموقع مباشرة من القرص الصلب بدون تحميل أي ملفات لذاكرة المتصفح!`;
+        zip.file('README.txt', readmeContent);
         
-        // إنشاء ملف ZIP
         const content = await zip.generateAsync({ type: 'blob' });
-        
-        // تنزيل الملف
         downloadBlob(content, 'educational-materials.zip');
         
         hideLoading();
+        showNotification('تم تصدير ملف النسخة الاحتياطية بنجاح!');
     } catch (error) {
         console.error('خطأ في تصدير البيانات:', error);
         hideLoading();
-        alert('حدث خطأ أثناء تصدير البيانات');
+        alert('حدث خطأ أثناء تصدير ملف ZIP: ' + error.message);
     }
 }
 
-// استيراد البيانات من ملف ZIP
+// استيراد البيانات من ملف ZIP (الاستيراد التقليدي)
 async function importDataFromZip() {
     try {
-        // تحميل مكتبة JSZip إذا لم تكن محملة بالفعل
         if (typeof JSZip === 'undefined') {
             await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js');
         }
         
-        // إنشاء عنصر إدخال ملف مؤقت
         const fileInput = document.createElement('input');
         fileInput.type = 'file';
         fileInput.accept = '.zip';
         fileInput.style.display = 'none';
         document.body.appendChild(fileInput);
         
-        // إنشاء promise للانتظار حتى يتم اختيار ملف
         const filePromise = new Promise((resolve, reject) => {
             fileInput.onchange = () => {
-                if (fileInput.files.length > 0) {
-                    resolve(fileInput.files[0]);
-                } else {
-                    reject(new Error('لم يتم اختيار ملف'));
-                }
+                if (fileInput.files.length > 0) resolve(fileInput.files[0]);
+                else reject(new Error('لم يتم اختيار ملف'));
             };
-            
-            // إلغاء إذا تم النقر خارج مربع الملفات
             setTimeout(() => {
-                if (fileInput.files.length === 0) {
-                    reject(new Error('تم إلغاء اختيار الملف'));
-                }
-            }, 100000); // 100 ثانية كحد أقصى
+                if (fileInput.files.length === 0) reject(new Error('تم إلغاء اختيار الملف'));
+            }, 100000);
         });
         
-        // فتح مربع حوار اختيار الملف
         fileInput.click();
-        
-        // انتظار اختيار الملف
         const file = await filePromise;
         
-        showLoading('جاري استيراد البيانات والملفات...');
+        showLoading('جاري استيراد البيانات والملفات إلى المتصفح...');
         
-        // قراءة ملف ZIP
         const zip = new JSZip();
         const zipContent = await zip.loadAsync(file);
         
-        // التحقق من وجود ملف data.xml
-        if (!zipContent.files['data.xml']) {
-            throw new Error('الملف غير صالح: data.xml غير موجود');
-        }
-        
-        // قراءة ملف XML
-        const xmlContent = await zipContent.files['data.xml'].async('text');
-        const parser = new DOMParser();
-        const xmlDoc = parser.parseFromString(xmlContent, 'text/xml');
-        
-        // مسح قواعد البيانات الحالية
         await clearStore(MATERIALS_STORE);
         await clearStore(BOOKS_STORE);
         await clearStore(FILES_STORE);
         
-        // استيراد المذكرات
-        const materialNodes = xmlDoc.querySelectorAll('materials > material');
-        for (const materialNode of materialNodes) {
-            const id = materialNode.getAttribute('id');
-            const getField = (fieldName) => {
-                const field = materialNode.querySelector(fieldName);
-                return field ? field.textContent : '';
-            };
+        if (zipContent.files['data.json']) {
+            const jsonText = await zipContent.files['data.json'].async('text');
+            const data = JSON.parse(jsonText);
             
-            const material = {
-                id: id,
-                name: getField('name'),
-                school: getField('school'),
-                teacher: getField('teacher'),
-                grade: getField('grade'),
-                sides: getField('sides'),
-                price: getField('price'),
-                fileName: '',
-                fileId: id,
-                dateAdded: new Date().toISOString()
-            };
+            if (Array.isArray(data.materials)) {
+                for (const m of data.materials) {
+                    await addItem(MATERIALS_STORE, m);
+                    if (m.fileId && m.fileName) {
+                        const path = `sample-pdfs/${m.id}_${m.fileName}`;
+                        if (zipContent.files[path]) {
+                            const buf = await zipContent.files[path].async('arraybuffer');
+                            await storeFileData(m.fileId, m.fileName, buf);
+                        }
+                    }
+                }
+            }
+            if (Array.isArray(data.books)) {
+                for (const b of data.books) {
+                    await addItem(BOOKS_STORE, b);
+                    if (b.fileId && b.fileName) {
+                        const path = `sample-pdfs/${b.id}_${b.fileName}`;
+                        if (zipContent.files[path]) {
+                            const buf = await zipContent.files[path].async('arraybuffer');
+                            await storeFileData(b.fileId, b.fileName, buf);
+                        }
+                    }
+                }
+            }
+        } else if (zipContent.files['data.xml']) {
+            const xmlContent = await zipContent.files['data.xml'].async('text');
+            const parser = new DOMParser();
+            const xmlDoc = parser.parseFromString(xmlContent, 'text/xml');
             
-            // استيراد ملف PDF المرتبط
-            const fileName = getField('file');
-            if (fileName) {
-                material.fileName = fileName.split('_').slice(1).join('_'); // إزالة معرف الملف من اسم الملف
+            const materialNodes = xmlDoc.querySelectorAll('materials > material');
+            for (const node of materialNodes) {
+                const id = node.getAttribute('id');
+                const getField = (f) => node.querySelector(f) ? node.querySelector(f).textContent : '';
+                const fileName = getField('file');
+                const rawName = fileName ? fileName.split('_').slice(1).join('_') : '';
                 
-                try {
-                    // قراءة ملف PDF من الأرشيف
+                const material = {
+                    id: id,
+                    name: getField('name'),
+                    school: getField('school'),
+                    teacher: getField('teacher'),
+                    grade: getField('grade'),
+                    sides: getField('sides'),
+                    price: getField('price'),
+                    fileName: rawName || fileName,
+                    fileId: id,
+                    thumbnail: getField('thumbnail') || null,
+                    dateAdded: new Date().toISOString()
+                };
+                
+                if (fileName) {
                     const pdfPath = `sample-pdfs/${fileName}`;
                     if (zipContent.files[pdfPath]) {
                         const pdfData = await zipContent.files[pdfPath].async('arraybuffer');
                         await storeFileData(id, material.fileName, pdfData);
                     }
-                } catch (error) {
-                    console.error('خطأ في استيراد ملف PDF للمذكرة:', error);
                 }
+                await addItem(MATERIALS_STORE, material);
             }
             
-            await addItem(MATERIALS_STORE, material);
-        }
-        
-        // استيراد الكتب
-        const bookNodes = xmlDoc.querySelectorAll('books > book');
-        for (const bookNode of bookNodes) {
-            const id = bookNode.getAttribute('id');
-            const getField = (fieldName) => {
-                const field = bookNode.querySelector(fieldName);
-                return field ? field.textContent : '';
-            };
-            
-            const book = {
-                id: id,
-                name: getField('name'),
-                grade: getField('grade'),
-                price: getField('price'),
-                fileName: '',
-                fileId: id,
-                dateAdded: new Date().toISOString()
-            };
-            
-            // استيراد ملف PDF المرتبط
-            const fileName = getField('file');
-            if (fileName) {
-                book.fileName = fileName.split('_').slice(1).join('_'); // إزالة معرف الملف من اسم الملف
+            const bookNodes = xmlDoc.querySelectorAll('books > book');
+            for (const node of bookNodes) {
+                const id = node.getAttribute('id');
+                const getField = (f) => node.querySelector(f) ? node.querySelector(f).textContent : '';
+                const fileName = getField('file');
+                const rawName = fileName ? fileName.split('_').slice(1).join('_') : '';
                 
-                try {
-                    // قراءة ملف PDF من الأرشيف
+                const book = {
+                    id: id,
+                    name: getField('name'),
+                    grade: getField('grade'),
+                    price: getField('price'),
+                    fileName: rawName || fileName,
+                    fileId: id,
+                    thumbnail: getField('thumbnail') || null,
+                    dateAdded: new Date().toISOString()
+                };
+                
+                if (fileName) {
                     const pdfPath = `sample-pdfs/${fileName}`;
                     if (zipContent.files[pdfPath]) {
                         const pdfData = await zipContent.files[pdfPath].async('arraybuffer');
                         await storeFileData(id, book.fileName, pdfData);
                     }
-                } catch (error) {
-                    console.error('خطأ في استيراد ملف PDF للكتاب:', error);
                 }
+                await addItem(BOOKS_STORE, book);
             }
-            
-            await addItem(BOOKS_STORE, book);
         }
         
-        // حذف عنصر الإدخال المؤقت
         document.body.removeChild(fileInput);
-        
         hideLoading();
-        alert('تم استيراد البيانات بنجاح');
-        
-        // إعادة تحميل الصفحة لعرض البيانات المستوردة
+        showNotification('تم استيراد البيانات والملفات بنجاح');
         await loadSavedItems();
+        await updateStorageStatusBadge();
     } catch (error) {
         console.error('خطأ في استيراد البيانات:', error);
         hideLoading();
-        if (error.message === 'تم إلغاء اختيار الملف') {
-            // لا شيء - تم إلغاء العملية من قبل المستخدم
-        } else {
+        if (error.message !== 'تم إلغاء اختيار الملف') {
             alert('حدث خطأ أثناء استيراد البيانات: ' + error.message);
         }
     }
+}
+
+// مسح مخزن في IndexedDB
+function clearStore(storeName) {
+    return new Promise((resolve, reject) => {
+        const transaction = db.transaction(storeName, 'readwrite');
+        const store = transaction.objectStore(storeName);
+        const request = store.clear();
+        request.onsuccess = () => resolve();
+        request.onerror = (event) => reject(event.target.error);
+    });
 }
 
 // تنزيل ملف كـ blob
@@ -1623,6 +1685,5 @@ async function storeFileData(id, fileName, data) {
         type: 'application/pdf',
         data: data
     };
-    
     await addItem(FILES_STORE, fileData);
 }
