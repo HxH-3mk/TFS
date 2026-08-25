@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>منصة المواد التعليمية | المذكرات والكتب</title>
+    <!-- تطبيق الثيم فوراً قبل الرندر لتجنب الوميض -->
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            const systemPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = savedTheme ? savedTheme : (systemPrefersDark ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
+    <!-- Google Fonts: Cairo & Tajawal -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="index.css">
+</head>
+<body>
+    <!-- شريط التنقل العلوي -->
+    <header class="navbar">
+        <div class="navbar-container">
+            <a href="index.html" class="brand">
+                <div class="brand-icon">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                        <line x1="9" y1="7" x2="15" y2="7"></line>
+                        <line x1="9" y1="11" x2="13" y2="11"></line>
+                    </svg>
+                </div>
+                <div class="brand-text">
+                    <span class="brand-title">منصة المواد التعليمية</span>
+                    <span class="brand-subtitle">المذكرات والكتب الدراسية</span>
+                </div>
+            </a>
+
+            <div class="nav-actions">
+                <!-- زر تبديل الثيم الداكن / الفاتح -->
+                <button type="button" class="theme-toggle-btn" onclick="toggleTheme()" title="تبديل المظهر الداكن/الفاتح" aria-label="تبديل المظهر">
+                    <svg class="sun-icon" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                    <svg class="moon-icon" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                </button>
+
+                <a href="https://hxh-3mk.github.io/TFS/" target="_blank" class="nav-btn nav-btn-outline">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+                    </svg>
+                    <span>الأدوات التعليمية</span>
+                </a>
+                <a href="admin.html" class="nav-btn nav-btn-primary">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="3" width="7" height="7"></rect>
+                        <rect x="14" y="14" width="7" height="7"></rect>
+                        <rect x="3" y="14" width="7" height="7"></rect>
+                    </svg>
+                    <span>لوحة الإدارة</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- القسم الترحيبي والبحث -->
+    <section class="hero-section">
+        <div class="hero-container">
+            <div class="hero-content">
+                <h1 class="hero-title">كل ما تحتاجه من <span class="highlight">مذكرات وكتب</span> في مكان واحد</h1>
+                <p class="hero-subtitle">تصفح، عاين، وحمّل المذكرات والكتب الدراسية بكل سهولة وبأعلى جودة</p>
+                
+                <!-- شريط البحث والفلترة -->
+                <div class="search-box-wrapper">
+                    <div class="search-box">
+                        <svg class="search-icon" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="11" cy="11" r="8"></circle>
+                            <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                        </svg>
+                        <input type="text" id="searchInput" placeholder="ابحث باسم المادة، المعلم، المدرسة، أو الصف..." oninput="handleSearch(this.value)">
+                        <button type="button" id="clearSearchBtn" class="clear-search-btn" onclick="clearSearch()" style="display: none;">
+                            ✕
+                        </button>
+                    </div>
+                </div>
+
+                <!-- خيارات الفلترة السريعة والإحصائيات -->
+                <div class="filter-pills">
+                    <button class="filter-pill active" onclick="filterCategory('all', this)">
+                        <span>جميع المواد</span>
+                        <span class="pill-badge" id="totalCountBadge">0</span>
+                    </button>
+                    <button class="filter-pill" onclick="filterCategory('materials', this)">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+                        <span>المذكرات</span>
+                        <span class="pill-badge" id="materialsCountBadge">0</span>
+                    </button>
+                    <button class="filter-pill" onclick="filterCategory('books', this)">
+                        <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                        <span>الكتب</span>
+                        <span class="pill-badge" id="booksCountBadge">0</span>
+                    </button>
+                </div>
+
+                <!-- شريط التنقل السريع وتصفية الصفوف الدراسية -->
+                <div class="grades-nav-wrapper" id="gradesNavWrapper" style="display: none;">
+                    <span class="grades-nav-label">الصفوف الدراسية:</span>
+                    <div class="grades-nav-pills" id="gradesNavPills">
+                        <!-- تتولد أزرار الصفوف المتاحة ديناميكياً -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- المحتوى الرئيسي للمواد مقسم حسب المراحل -->
+    <main class="main-content">
+        <div class="container" id="stagesContainer">
+            <div class="loading-state">
+                <div class="spinner"></div>
+                <p>جاري تحميل المواد الدراسية...</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- الفوتر -->
+    <footer class="footer">
+        <div class="container footer-content">
+            <p>منصة المواد التعليمية &copy; 2026 - جميع الحقوق محفوظة</p>
+            <div class="footer-links">
+                <a href="https://hxh-3mk.github.io/TFS/" target="_blank">الأدوات</a>
+                <a href="admin.html">لوحة الإدارة</a>
+            </div>
+        </div>
+    </footer>
+
+    <!-- نافذة المعاينة السريعة للـ PDF (Modal) -->
+    <div id="previewModal" class="modal" onclick="closePreviewModal(event)">
+        <div class="modal-dialog" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <div class="modal-title-wrap">
+                    <h3 id="modalTitle" class="modal-title">معاينة الملف</h3>
+                    <span id="modalBadge" class="card-badge">مذكرة</span>
+                </div>
+                <button type="button" class="modal-close-btn" onclick="closePreviewModal()">✕</button>
+            </div>
+            <div class="modal-body" id="modalPreviewBody">
+                <div class="modal-preview-canvas-container" id="modalCanvasContainer">
+                    <div class="spinner"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="nav-btn nav-btn-outline" onclick="closePreviewModal()">إغلاق</button>
+                <button type="button" id="modalDownloadBtn" class="nav-btn nav-btn-primary">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    <span>تحميل الملف الآن</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- PDF.js Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
+    <script>
+        if (window.pdfjsLib && pdfjsLib.GlobalWorkerOptions) {
+            try {
+                pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.worker.min.js';
+            } catch (e) {
+                console.warn('Worker init warning:', e);
+            }
+        }
+    </script>
+    <script src="index.js"></script>
+</body>
+</html>

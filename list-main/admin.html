@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html dir="rtl" lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>لوحة الإدارة | منصة المواد التعليمية</title>
+    <!-- تطبيق الثيم فوراً قبل الرندر لتجنب الوميض -->
+    <script>
+        (function() {
+            const savedTheme = localStorage.getItem('theme');
+            const systemPrefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+            const theme = savedTheme ? savedTheme : (systemPrefersDark ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', theme);
+        })();
+    </script>
+    <!-- Google Fonts: Cairo & Tajawal -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;500;600;700;800&family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="admin.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    </script>
+</head>
+<body>
+    <!-- شريط التنقل العلوي -->
+    <header class="admin-navbar">
+        <div class="navbar-container">
+            <div class="brand-group">
+                <a href="index.html" class="brand">
+                    <div class="brand-icon">
+                        <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+                            <rect x="3" y="3" width="7" height="7"></rect>
+                            <rect x="14" y="3" width="7" height="7"></rect>
+                            <rect x="14" y="14" width="7" height="7"></rect>
+                            <rect x="3" y="14" width="7" height="7"></rect>
+                        </svg>
+                    </div>
+                    <div class="brand-text">
+                        <span class="brand-title">لوحة الإدارة والتحكم</span>
+                        <span class="brand-subtitle">إدارة المذكرات والكتب المدرسية</span>
+                    </div>
+                </a>
+            </div>
+
+            <div class="nav-actions">
+                <!-- زر تبديل الثيم الداكن / الفاتح -->
+                <button type="button" class="theme-toggle-btn" onclick="toggleTheme()" title="تبديل المظهر الداكن/الفاتح" aria-label="تبديل المظهر">
+                    <svg class="sun-icon" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <circle cx="12" cy="12" r="5"></circle>
+                        <line x1="12" y1="1" x2="12" y2="3"></line>
+                        <line x1="12" y1="21" x2="12" y2="23"></line>
+                        <line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line>
+                        <line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line>
+                        <line x1="1" y1="12" x2="3" y2="12"></line>
+                        <line x1="21" y1="12" x2="23" y2="12"></line>
+                        <line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line>
+                        <line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line>
+                    </svg>
+                    <svg class="moon-icon" viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path>
+                    </svg>
+                </button>
+
+                <a href="https://hxh-3mk.github.io/TFS/" target="_blank" class="nav-btn nav-btn-outline">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"></path>
+                    </svg>
+                    <span>الأدوات</span>
+                </a>
+                <a href="index.html" class="nav-btn nav-btn-primary">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path>
+                        <polyline points="9 22 9 12 15 12 15 22"></polyline>
+                    </svg>
+                    <span>عرض الموقع</span>
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <div class="container main-admin-container">
+        
+        <!-- شريط الإحصائيات السريعة -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon stat-icon-blue">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                        <polyline points="14 2 14 8 20 8"></polyline>
+                        <line x1="16" y1="13" x2="8" y2="13"></line>
+                        <line x1="16" y1="17" x2="8" y2="17"></line>
+                    </svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">المذكرات المسجلة</span>
+                    <span class="stat-value" id="statsMaterialsCount">0</span>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon stat-icon-purple">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                    </svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">الكتب المسجلة</span>
+                    <span class="stat-value" id="statsBooksCount">0</span>
+                </div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-icon stat-icon-emerald">
+                    <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"></path>
+                        <polyline points="3.27 6.96 12 12.01 20.73 6.96"></polyline>
+                        <line x1="12" y1="22.08" x2="12" y2="12"></line>
+                    </svg>
+                </div>
+                <div class="stat-info">
+                    <span class="stat-label">حالة التخزين</span>
+                    <span class="stat-value" style="font-size:1.1rem; color:var(--success)">محلي جاهز (IndexedDB)</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- التبويبات -->
+        <div class="tab-wrapper">
+            <div class="tabs">
+                <button type="button" class="tab active" onclick="switchTab('tab-materials')">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path>
+                    </svg>
+                    <span>إدارة المذكرات</span>
+                </button>
+                <button type="button" class="tab" onclick="switchTab('tab-books')">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path>
+                        <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path>
+                    </svg>
+                    <span>إدارة الكتب</span>
+                </button>
+                <button type="button" class="tab" onclick="switchTab('tab-backup')">
+                    <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                    <span>النسخ الاحتياطي والاستعادة</span>
+                </button>
+            </div>
+        </div>
+
+        <!-- قسم المذكرات -->
+        <div id="tab-materials" class="tab-content active">
+            <div class="admin-card">
+                <div class="card-header">
+                    <div class="card-header-title">
+                        <h2 id="materialFormTitle">إضافة مذكرة جديدة</h2>
+                        <p>أدخل بيانات المذكرة مع رفع ملف PDF للمعاينة والتحميل</p>
+                    </div>
+                </div>
+                
+                <form id="materialForm" class="admin-form">
+                    <div class="form-grid">
+                        <div class="form-group">
+                            <label for="materialName">اسم المادة / المذكرة <span class="required">*</span></label>
+                            <input type="text" id="materialName" placeholder="مثال: رياضيات - الفصل الأول" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="schoolName">اسم المدرسة <span class="required">*</span></label>
+                            <input type="text" id="schoolName" placeholder="مثال: ثانوية الملك فهد" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="teacherName">اسم المعلم <span class="required">*</span></label>
+                            <input type="text" id="teacherName" placeholder="مثال: أ. محمد العتيبي" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="grade">الصف الدراسي <span class="required">*</span></label>
+                            <select id="grade" required>
+                                <option value="" disabled selected>اختر الصف الدراسي...</option>
+                                <optgroup label="المرحلة الابتدائية">
+                                    <option value="الأول الابتدائي">الأول الابتدائي</option>
+                                    <option value="الثاني الابتدائي">الثاني الابتدائي</option>
+                                    <option value="الثالث الابتدائي">الثالث الابتدائي</option>
+                                    <option value="الرابع الابتدائي">الرابع الابتدائي</option>
+                                    <option value="الخامس الابتدائي">الخامس الابتدائي</option>
+                                    <option value="السادس الابتدائي">السادس الابتدائي</option>
+                                </optgroup>
+                                <optgroup label="المرحلة المتوسطة">
+                                    <option value="الأول المتوسط">الأول المتوسط</option>
+                                    <option value="الثاني المتوسط">الثاني المتوسط</option>
+                                    <option value="الثالث المتوسط">الثالث المتوسط</option>
+                                </optgroup>
+                                <optgroup label="المرحلة الثانوية">
+                                    <option value="الأول الثانوي">الأول الثانوي</option>
+                                    <option value="الثاني الثانوي">الثاني الثانوي</option>
+                                    <option value="الثالث الثانوي">الثالث الثانوي</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="sides">نوع الطباعة <span class="required">*</span></label>
+                            <select id="sides" required>
+                                <option value="وجه واحد">وجه واحد</option>
+                                <option value="وجهين">وجهين</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="price">السعر (ريال) <span class="required">*</span></label>
+                            <input type="number" id="price" min="0" step="1" dir="ltr" class="en-num-input" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;" placeholder="مثال: 25" required>
+                        </div>
+                    </div>
+
+                    <!-- رفع الملف ومعاينته -->
+                    <div class="upload-and-preview-grid">
+                        <div class="upload-zone-wrapper">
+                            <label>ملف المذكرة (PDF) <span class="required">*</span></label>
+                            <div class="file-input-container" onclick="document.getElementById('materialFile').click()">
+                                <div class="file-drop-icon">
+                                    <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.8">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="17 8 12 3 7 8"></polyline>
+                                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                                    </svg>
+                                </div>
+                                <p class="file-drop-text">انقر لاختيار ملف PDF أو اسحب الملف وأفلته هنا</p>
+                                <p class="file-drop-hint">الحد الأقصى الموصى به: 50MB</p>
+                                <div id="materialFileName" class="file-name-tag"></div>
+                            </div>
+                            <input type="file" id="materialFile" accept=".pdf" required onchange="updateFileName(this, 'materialFileName')" style="display: none !important;">
+                        </div>
+
+                        <div class="preview-box-wrapper">
+                            <label>معاينة الغلاف (الصفحة الأولى)</label>
+                            <div class="preview-container" id="materialPreview">
+                                <div class="preview-empty-placeholder">
+                                    <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5">
+                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                        <polyline points="21 15 16 10 5 21"></polyline>
+                                    </svg>
+                                    <span>ستظهر معاينة الصفحة الأولى هنا فور اختيار الملف</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="resetForm('materialForm')">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                                <path d="M3 3v5h5"></path>
+                            </svg>
+                            <span>إعادة تعيين / إلغاء</span>
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                                <polyline points="7 3 7 8 15 8"></polyline>
+                            </svg>
+                            <span>حفظ المذكرة</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- قائمة المذكرات الحالية -->
+            <div class="items-list-card">
+                <div class="items-list-header">
+                    <div class="items-list-title">
+                        <h3>المذكرات المضافة</h3>
+                        <span class="items-count-badge" id="materialsListCount">0</span>
+                    </div>
+                    <div class="search-mini">
+                        <input type="text" placeholder="بحث في المذكرات..." oninput="filterAdminItems('material', this.value)">
+                    </div>
+                </div>
+                <div class="items-list" id="materialsList">
+                    <!-- سيتم تعبئة المذكرات ديناميكيًا -->
+                </div>
+            </div>
+        </div>
+
+        <!-- قسم الكتب -->
+        <div id="tab-books" class="tab-content">
+            <div class="admin-card">
+                <div class="card-header">
+                    <div class="card-header-title">
+                        <h2 id="bookFormTitle">إضافة كتاب جديد</h2>
+                        <p>أدخل بيانات الكتاب المدرسي مع رفع ملف PDF للمعاينة والتحميل</p>
+                    </div>
+                </div>
+                
+                <form id="bookForm" class="admin-form">
+                    <div class="form-grid">
+                        <div class="form-group" style="grid-column: span 2;">
+                            <label for="bookName">اسم المادة / الكتاب <span class="required">*</span></label>
+                            <input type="text" id="bookName" placeholder="مثال: لغتي الجميلة - كتاب الطالب" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="bookGrade">الصف الدراسي <span class="required">*</span></label>
+                            <select id="bookGrade" required>
+                                <option value="" disabled selected>اختر الصف الدراسي...</option>
+                                <optgroup label="المرحلة الابتدائية">
+                                    <option value="الأول الابتدائي">الأول الابتدائي</option>
+                                    <option value="الثاني الابتدائي">الثاني الابتدائي</option>
+                                    <option value="الثالث الابتدائي">الثالث الابتدائي</option>
+                                    <option value="الرابع الابتدائي">الرابع الابتدائي</option>
+                                    <option value="الخامس الابتدائي">الخامس الابتدائي</option>
+                                    <option value="السادس الابتدائي">السادس الابتدائي</option>
+                                </optgroup>
+                                <optgroup label="المرحلة المتوسطة">
+                                    <option value="الأول المتوسط">الأول المتوسط</option>
+                                    <option value="الثاني المتوسط">الثاني المتوسط</option>
+                                    <option value="الثالث المتوسط">الثالث المتوسط</option>
+                                </optgroup>
+                                <optgroup label="المرحلة الثانوية">
+                                    <option value="الأول الثانوي">الأول الثانوي</option>
+                                    <option value="الثاني الثانوي">الثاني الثانوي</option>
+                                    <option value="الثالث الثانوي">الثالث الثانوي</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="bookPrice">السعر (ريال) <span class="required">*</span></label>
+                            <input type="number" id="bookPrice" min="0" step="1" dir="ltr" class="en-num-input" style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif !important;" placeholder="مثال: 30" required>
+                            <small id="bookPriceHint" class="en-num" style="display:none; color:var(--primary); font-size:0.82rem; margin-top:6px; font-weight:600; line-height:1.4;"></small>
+                        </div>
+                    </div>
+
+                    <!-- رفع الملف ومعاينته -->
+                    <div class="upload-and-preview-grid">
+                        <div class="upload-zone-wrapper">
+                            <label>ملف الكتاب (PDF) <span class="required">*</span></label>
+                            <div class="file-input-container" onclick="document.getElementById('bookFile').click()">
+                                <div class="file-drop-icon">
+                                    <svg viewBox="0 0 24 24" width="40" height="40" fill="none" stroke="currentColor" stroke-width="1.8">
+                                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                                        <polyline points="17 8 12 3 7 8"></polyline>
+                                        <line x1="12" y1="3" x2="12" y2="15"></line>
+                                    </svg>
+                                </div>
+                                <p class="file-drop-text">انقر لاختيار ملف PDF أو اسحب الملف وأفلته هنا</p>
+                                <p class="file-drop-hint">الحد الأقصى الموصى به: 50MB</p>
+                                <div id="bookFileName" class="file-name-tag"></div>
+                            </div>
+                            <input type="file" id="bookFile" accept=".pdf" required onchange="updateFileName(this, 'bookFileName')" style="display: none !important;">
+                        </div>
+
+                        <div class="preview-box-wrapper">
+                            <label>معاينة الغلاف (الصفحة الأولى)</label>
+                            <div class="preview-container" id="bookPreview">
+                                <div class="preview-empty-placeholder">
+                                    <svg viewBox="0 0 24 24" width="36" height="36" fill="none" stroke="currentColor" stroke-width="1.5">
+                                        <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
+                                        <circle cx="8.5" cy="8.5" r="1.5"></circle>
+                                        <polyline points="21 15 16 10 5 21"></polyline>
+                                    </svg>
+                                    <span>ستظهر معاينة الصفحة الأولى هنا فور اختيار الملف</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="button" class="btn btn-secondary" onclick="resetForm('bookForm')">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"></path>
+                                <path d="M3 3v5h5"></path>
+                            </svg>
+                            <span>إعادة تعيين / إلغاء</span>
+                        </button>
+                        <button type="submit" class="btn btn-primary">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                                <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                                <polyline points="7 3 7 8 15 8"></polyline>
+                            </svg>
+                            <span>حفظ الكتاب</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- قائمة الكتب الحالية -->
+            <div class="items-list-card">
+                <div class="items-list-header">
+                    <div class="items-list-title">
+                        <h3>الكتب المضافة</h3>
+                        <span class="items-count-badge" id="booksListCount">0</span>
+                    </div>
+                    <div class="search-mini">
+                        <input type="text" placeholder="بحث في الكتب..." oninput="filterAdminItems('book', this.value)">
+                    </div>
+                </div>
+                <div class="items-list" id="booksList">
+                    <!-- سيتم تعبئة الكتب ديناميكيًا -->
+                </div>
+            </div>
+        </div>
+
+        <!-- قسم النسخ الاحتياطي -->
+        <div id="tab-backup" class="tab-content">
+            <div class="backup-grid">
+                <div class="backup-card">
+                    <div class="backup-icon backup-icon-export">
+                        <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                    </div>
+                    <h3>تصدير نسخة احتياطية كاملة</h3>
+                    <p>قم بتصدير جميع المذكرات والكتب وملفات PDF كملف أرشيف مضغوط (.ZIP) لحفظها بأمان أو نقلها لجهاز آخر.</p>
+                    <button type="button" class="btn btn-primary btn-block" onclick="exportDataAsZip()">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="7 10 12 15 17 10"></polyline>
+                            <line x1="12" y1="15" x2="12" y2="3"></line>
+                        </svg>
+                        <span>تصدير البيانات والملفات (ZIP)</span>
+                    </button>
+                </div>
+
+                <div class="backup-card">
+                    <div class="backup-icon backup-icon-import">
+                        <svg viewBox="0 0 24 24" width="32" height="32" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                    </div>
+                    <h3>استيراد واسترجاع البيانات</h3>
+                    <p>قم باستعادة بياناتك من ملف ZIP سبق تصديره لإعادة ملء قاعدة البيانات بجميع المذكرات والكتب.</p>
+                    <button type="button" class="btn btn-outline-dark btn-block" onclick="importDataFromZip()">
+                        <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                            <polyline points="17 8 12 3 7 8"></polyline>
+                            <line x1="12" y1="3" x2="12" y2="15"></line>
+                        </svg>
+                        <span>استيراد من ملف ZIP</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+    
+    <!-- إشعار Toast منبثق حديث -->
+    <div class="toast-notification" id="notification">
+        <div class="toast-icon">
+            <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2">
+                <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+        </div>
+        <span id="notificationText">تم الحفظ بنجاح</span>
+    </div>
+    
+    <!-- مؤشر التحميل الشفاف -->
+    <div id="loadingOverlay" class="loading-overlay" style="display: none;">
+        <div class="loading-box">
+            <div class="loading-spinner"></div>
+            <div id="loadingMessage" class="loading-text">جاري المعالجة...</div>
+        </div>
+    </div>
+    
+    <script src="admin.js"></script>
+</body>
+</html>
+
