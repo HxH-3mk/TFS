@@ -124,13 +124,13 @@ function createMaterialCard(material) {
             </div>`;
     
     card.innerHTML = `
-        <div class="card-preview-area" onclick="downloadFile('${material.fileId}', '${escapeHtml(material.fileName || material.name + '.pdf')}')" title="انقر لتحميل المذكرة فوراً">
+        <div class="card-preview-area" title="انقر لتحميل المذكرة فوراً">
             <span class="card-badge">مذكرة</span>
             <span class="grade-badge">${escapeHtml(material.grade || 'غير محدد')}</span>
             <div class="preview-container" id="${previewId}">
                 ${previewInner}
             </div>
-            <button class="preview-overlay-btn" type="button" onclick="event.stopPropagation(); downloadFile('${material.fileId}', '${escapeHtml(material.fileName || material.name + '.pdf')}')">
+            <button class="preview-overlay-btn" type="button">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                     <polyline points="7 10 12 15 17 10"></polyline>
@@ -166,7 +166,7 @@ function createMaterialCard(material) {
                     <span class="price-label">السعر</span>
                     <span class="price-value">${material.price || 0} <small style="font-size:0.75rem">ر.س</small></span>
                 </div>
-                <button type="button" class="download-link" onclick="downloadFile('${material.fileId}', '${escapeHtml(material.fileName || material.name + '.pdf')}')">
+                <button type="button" class="download-link">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                         <polyline points="7 10 12 15 17 10"></polyline>
@@ -177,6 +177,20 @@ function createMaterialCard(material) {
             </div>
         </div>
     `;
+    
+    const targetFileName = material.fileName || (material.name ? material.name + '.pdf' : 'material.pdf');
+    const onDownload = (e) => {
+        if (e) e.stopPropagation();
+        downloadFile(material.fileId, targetFileName, material.name, material.id);
+    };
+    
+    const previewArea = card.querySelector('.card-preview-area');
+    const overlayBtn = card.querySelector('.preview-overlay-btn');
+    const downloadBtn = card.querySelector('.download-link');
+    
+    if (previewArea) previewArea.addEventListener('click', onDownload);
+    if (overlayBtn) overlayBtn.addEventListener('click', onDownload);
+    if (downloadBtn) downloadBtn.addEventListener('click', onDownload);
     
     return card;
 }
@@ -198,13 +212,13 @@ function createBookCard(book) {
             </div>`;
     
     card.innerHTML = `
-        <div class="card-preview-area" onclick="downloadFile('${book.fileId}', '${escapeHtml(book.fileName || book.name + '.pdf')}')" title="انقر لتحميل الكتاب فوراً">
+        <div class="card-preview-area" title="انقر لتحميل الكتاب فوراً">
             <span class="card-badge" style="background: rgba(114, 9, 183, 0.85)">كتاب</span>
             <span class="grade-badge">${escapeHtml(book.grade || 'غير محدد')}</span>
             <div class="preview-container" id="${previewId}">
                 ${previewInner}
             </div>
-            <button class="preview-overlay-btn" type="button" onclick="event.stopPropagation(); downloadFile('${book.fileId}', '${escapeHtml(book.fileName || book.name + '.pdf')}')">
+            <button class="preview-overlay-btn" type="button">
                 <svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2">
                     <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                     <polyline points="7 10 12 15 17 10"></polyline>
@@ -227,7 +241,7 @@ function createBookCard(book) {
                     <span class="price-label">السعر</span>
                     <span class="price-value">${book.price || 0} <small style="font-size:0.75rem">ر.س</small></span>
                 </div>
-                <button type="button" class="download-link" onclick="downloadFile('${book.fileId}', '${escapeHtml(book.fileName || book.name + '.pdf')}')">
+                <button type="button" class="download-link">
                     <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
                         <polyline points="7 10 12 15 17 10"></polyline>
@@ -238,6 +252,20 @@ function createBookCard(book) {
             </div>
         </div>
     `;
+    
+    const targetFileName = book.fileName || (book.name ? book.name + '.pdf' : 'book.pdf');
+    const onDownload = (e) => {
+        if (e) e.stopPropagation();
+        downloadFile(book.fileId, targetFileName, book.name, book.id);
+    };
+    
+    const previewArea = card.querySelector('.card-preview-area');
+    const overlayBtn = card.querySelector('.preview-overlay-btn');
+    const downloadBtn = card.querySelector('.download-link');
+    
+    if (previewArea) previewArea.addEventListener('click', onDownload);
+    if (overlayBtn) overlayBtn.addEventListener('click', onDownload);
+    if (downloadBtn) downloadBtn.addEventListener('click', onDownload);
     
     return card;
 }
@@ -284,7 +312,7 @@ async function updateHomeStorageButton() {
             btnText.textContent = `📁 ${indexLinkedDirectoryHandle.name}`;
             btn.style.borderColor = 'var(--primary)';
             btn.style.color = 'var(--primary)';
-            btn.title = `المجلد المتصل: ${indexLinkedDirectoryHandle.name} (انقر للتغيير)`;
+            btn.title = `المجلد المتصل: ${indexLinkedDirectoryHandle.name} (انقر للتغيير أو إعادة الربط)`;
         } else {
             btnText.textContent = 'مجلد محلي';
             btn.style.borderColor = '';
@@ -294,8 +322,120 @@ async function updateHomeStorageButton() {
     }
 }
 
+// Helper: Deep and robust search for PDF file inside directory handle and subfolders
+async function findFileInDirectoryHandle(rootDirHandle, fileId, rawFileName, itemId = null, itemName = null) {
+    if (!rootDirHandle) return null;
+    
+    const idsToTry = [fileId, itemId].filter(Boolean).map(x => x.toString().trim());
+    const namesToTry = [rawFileName, itemName].filter(Boolean).map(x => x.toString().trim());
+    
+    // Normalization helper for Arabic, punctuation, and case differences
+    const norm = (str) => (str || '')
+        .normalize('NFC')
+        .toLowerCase()
+        .replace(/[\s_\-\.\(\)]+/g, '');
+        
+    const targetNorms = namesToTry.map(n => norm(n.replace(/\.pdf$/i, ''))).filter(Boolean);
+    
+    // Collect all directories to search: root directory + common subdirectories
+    const dirsToSearch = [rootDirHandle];
+    const subDirNames = ['sample-pdfs', 'sample_pdfs', 'pdfs', 'PDFs', 'files', 'materials', 'books'];
+    
+    for (const subName of subDirNames) {
+        try {
+            const subHandle = await rootDirHandle.getDirectoryHandle(subName);
+            if (subHandle) dirsToSearch.push(subHandle);
+        } catch (e) {
+            // Subdir doesn't exist
+        }
+    }
+    
+    // 1. Fast Pass: Direct exact candidates on all candidate directories
+    const candidateNames = [];
+    for (const cleanId of idsToTry) {
+        for (const cleanName of namesToTry) {
+            const cleanNameNoExt = cleanName.replace(/\.pdf$/i, '');
+            candidateNames.push(`${cleanId}_${cleanName}`);
+            candidateNames.push(`${cleanId}_${cleanNameNoExt}.pdf`);
+            candidateNames.push(`${cleanId}-${cleanNameNoExt}.pdf`);
+        }
+        candidateNames.push(`${cleanId}.pdf`);
+    }
+    for (const cleanName of namesToTry) {
+        const cleanNameNoExt = cleanName.replace(/\.pdf$/i, '');
+        candidateNames.push(cleanName);
+        candidateNames.push(`${cleanNameNoExt}.pdf`);
+    }
+    
+    for (const dir of dirsToSearch) {
+        for (const candidate of candidateNames) {
+            try {
+                const fileHandle = await dir.getFileHandle(candidate);
+                const file = await fileHandle.getFile();
+                if (file && file.size > 0) return file;
+            } catch (e) {
+                // Try next
+            }
+        }
+    }
+    
+    // 2. Deep Pass: Iterate directory entries with fuzzy and normalized Arabic matching
+    for (const dir of dirsToSearch) {
+        try {
+            if (typeof dir.entries === 'function' || typeof dir.values === 'function') {
+                const iterator = dir.entries ? dir.entries() : dir.values();
+                for await (const entry of iterator) {
+                    const handle = Array.isArray(entry) ? entry[1] : entry;
+                    const name = Array.isArray(entry) ? entry[0] : handle.name;
+                    
+                    if (!handle || handle.kind !== 'file') continue;
+                    if (!name.toLowerCase().endsWith('.pdf') && !name.toLowerCase().includes('.pdf')) continue;
+                    
+                    const entryName = name;
+                    const entryNorm = norm(entryName.replace(/\.pdf$/i, ''));
+                    
+                    // Match by file ID or item ID prefix (e.g., 1788251448243_...)
+                    for (const cleanId of idsToTry) {
+                        if (cleanId && entryName.startsWith(cleanId)) {
+                            try {
+                                const file = await handle.getFile();
+                                if (file && file.size > 0) return file;
+                            } catch (e) {}
+                        }
+                    }
+                    
+                    // Match by normalized text inclusion
+                    for (const targetNorm of targetNorms) {
+                        if (targetNorm && (entryNorm.includes(targetNorm) || targetNorm.includes(entryNorm))) {
+                            try {
+                                const file = await handle.getFile();
+                                if (file && file.size > 0) return file;
+                            } catch (e) {}
+                        }
+                    }
+                    
+                    // Match after stripping leading numeric IDs (e.g., 1709123456_name.pdf -> name.pdf)
+                    const nameWithoutPrefix = entryName.replace(/^\d+[\s_\-]+/, '');
+                    for (const cleanName of namesToTry) {
+                        if (cleanName && norm(nameWithoutPrefix) === norm(cleanName)) {
+                            try {
+                                const file = await handle.getFile();
+                                if (file && file.size > 0) return file;
+                            } catch (e) {}
+                        }
+                    }
+                }
+            }
+        } catch (iterErr) {
+            console.warn('Error scanning directory entries:', iterErr);
+        }
+    }
+    
+    return null;
+}
+
 // Helper to get PDF File/Blob either from linked local directory OR from IndexedDB
-async function getPDFBlob(fileId, rawFileName) {
+async function getPDFBlob(fileId, rawFileName, isInteractive = false, itemId = null, itemName = null) {
     if (!indexLinkedDirectoryHandle) {
         indexLinkedDirectoryHandle = await getStoredDirectoryHandle();
     }
@@ -303,45 +443,48 @@ async function getPDFBlob(fileId, rawFileName) {
     if (indexLinkedDirectoryHandle) {
         try {
             const opts = { mode: 'read' };
-            if ((await indexLinkedDirectoryHandle.queryPermission(opts)) !== 'granted') {
-                if ((await indexLinkedDirectoryHandle.requestPermission(opts)) !== 'granted') {
-                    console.warn('Directory permission not granted');
-                }
-            }
+            let perm = 'denied';
             
-            let targetDirHandle = indexLinkedDirectoryHandle;
-            try {
-                targetDirHandle = await indexLinkedDirectoryHandle.getDirectoryHandle('sample-pdfs');
-            } catch (err) {
-                targetDirHandle = indexLinkedDirectoryHandle;
-            }
-            
-            const candidateNames = [
-                `${fileId}_${rawFileName}`,
-                rawFileName,
-                `${fileId}.pdf`,
-                rawFileName ? `${rawFileName}.pdf` : null
-            ].filter(Boolean);
-            
-            for (const candidate of candidateNames) {
+            if (typeof indexLinkedDirectoryHandle.queryPermission === 'function') {
                 try {
-                    const fileHandle = await targetDirHandle.getFileHandle(candidate);
-                    const file = await fileHandle.getFile();
-                    if (file) return file;
+                    perm = await indexLinkedDirectoryHandle.queryPermission(opts);
                 } catch (e) {
-                    // Try next candidate
+                    perm = 'prompt';
                 }
+            } else {
+                perm = 'granted';
+            }
+            
+            // Only request permission during direct user clicks to avoid browser security gesture errors
+            if (perm !== 'granted' && isInteractive) {
+                if (typeof indexLinkedDirectoryHandle.requestPermission === 'function') {
+                    try {
+                        perm = await indexLinkedDirectoryHandle.requestPermission(opts);
+                    } catch (permErr) {
+                        console.warn('requestPermission failed:', permErr);
+                    }
+                }
+            }
+            
+            if (perm === 'granted') {
+                const foundFile = await findFileInDirectoryHandle(indexLinkedDirectoryHandle, fileId, rawFileName, itemId, itemName);
+                if (foundFile) return foundFile;
             }
         } catch (dirErr) {
             console.warn('Error reading from linked directory:', dirErr);
         }
     }
     
-    // Fallback to IndexedDB files store
-    if (fileId) {
-        const fileData = await getFile(fileId);
-        if (fileData && fileData.data) {
-            return new Blob([fileData.data], { type: 'application/pdf' });
+    // Fallback: Retrieve from IndexedDB files store
+    const idsToSearchDB = [fileId, itemId].filter(Boolean);
+    for (const searchId of idsToSearchDB) {
+        try {
+            const fileData = await getFile(searchId);
+            if (fileData && fileData.data) {
+                return new Blob([fileData.data], { type: 'application/pdf' });
+            }
+        } catch (dbErr) {
+            console.warn('IndexedDB file fetch notice:', dbErr);
         }
     }
     
@@ -355,10 +498,10 @@ async function renderPdfPreviewFromDB(item, containerId) {
     
     const fileId = item.fileId;
     const fileName = item.fileName;
-    if (!fileId && !fileName) return;
+    if (!fileId && !fileName && !item.id) return;
     
     try {
-        const blob = await getPDFBlob(fileId, fileName);
+        const blob = await getPDFBlob(fileId, fileName, false, item.id, item.name);
         if (!blob) return;
         
         const container = document.getElementById(containerId);
@@ -373,15 +516,15 @@ async function renderPdfPreviewFromDB(item, containerId) {
             return pdf.getPage(1);
         }).then(function(page) {
             const viewport = page.getViewport({ scale: 1.0 });
-            const containerWidth = container.clientWidth || 240;
-            const containerHeight = container.clientHeight || 180;
+            const containerWidth = container.clientWidth || 160;
+            const containerHeight = container.clientHeight || 160;
             
             const scale = Math.min(
                 containerWidth / viewport.width,
                 containerHeight / viewport.height
             ) * 0.95;
             
-            const scaledViewport = page.getViewport({ scale: scale > 0 ? scale : 0.5 });
+            const scaledViewport = page.getViewport({ scale: scale > 0 ? scale : 0.4 });
             
             canvas.width = scaledViewport.width;
             canvas.height = scaledViewport.height;
@@ -396,7 +539,7 @@ async function renderPdfPreviewFromDB(item, containerId) {
             container.innerHTML = '';
             container.appendChild(canvas);
             
-            // Cache thumbnail into item for instant loading on next visits!
+            // Auto-cache thumbnail in IndexedDB if not present!
             try {
                 const thumbData = canvas.toDataURL('image/jpeg', 0.85);
                 item.thumbnail = thumbData;
@@ -418,114 +561,223 @@ async function renderPdfPreviewFromDB(item, containerId) {
 // Link local data directory from Home Page
 async function linkLocalDataDirectory() {
     try {
-        if (!window.showDirectoryPicker) {
-            alert('متصفحك لا يدعم اختيار المجلدات المباشرة. يرجى استخدام متصفح حديث مثل Google Chrome أو Microsoft Edge.');
-            return;
-        }
-        
-        const dirHandle = await window.showDirectoryPicker({
-            id: 'educational-materials',
-            mode: 'read'
-        });
-        
-        let jsonData = null;
-        let xmlDoc = null;
-        
-        try {
-            const jsonHandle = await dirHandle.getFileHandle('data.json');
-            const jsonFile = await jsonHandle.getFile();
-            const jsonText = await jsonFile.text();
-            jsonData = JSON.parse(jsonText);
-        } catch (e) {
+        if (window.showDirectoryPicker) {
+            const dirHandle = await window.showDirectoryPicker({
+                id: 'educational-materials',
+                mode: 'read'
+            });
+            
+            let jsonData = null;
+            let xmlDoc = null;
+            
+            // 1. Try reading data.json
             try {
-                const xmlHandle = await dirHandle.getFileHandle('data.xml');
-                const xmlFile = await xmlHandle.getFile();
-                const xmlText = await xmlFile.text();
-                const parser = new DOMParser();
-                xmlDoc = parser.parseFromString(xmlText, 'text/xml');
-            } catch (err) {
-                alert('لم يتم العثور على ملف data.json أو data.xml داخل المجلد المختار.\nيرجى التأكد من استخراج ملفات النسخة الاحتياطية واختيار المجلد الصحيح.');
-                return;
-            }
-        }
-        
-        // Clear metadata stores (keep files store empty to save memory!)
-        const transMat = db.transaction(MATERIALS_STORE, 'readwrite');
-        transMat.objectStore(MATERIALS_STORE).clear();
-        const transBook = db.transaction(BOOKS_STORE, 'readwrite');
-        transBook.objectStore(BOOKS_STORE).clear();
-        const transFile = db.transaction(FILES_STORE, 'readwrite');
-        transFile.objectStore(FILES_STORE).clear();
-        
-        // Save directory handle
-        indexLinkedDirectoryHandle = dirHandle;
-        const transSave = db.transaction(FILES_STORE, 'readwrite');
-        transSave.objectStore(FILES_STORE).put({ id: '__linked_dir_handle__', handle: dirHandle, name: dirHandle.name });
-        
-        // Import Metadata
-        if (jsonData) {
-            if (Array.isArray(jsonData.materials)) {
-                for (const m of jsonData.materials) {
-                    await updateItem(MATERIALS_STORE, m);
+                const jsonHandle = await dirHandle.getFileHandle('data.json');
+                const jsonFile = await jsonHandle.getFile();
+                const jsonText = await jsonFile.text();
+                jsonData = JSON.parse(jsonText);
+            } catch (e) {
+                // 2. Fallback: try data.xml
+                try {
+                    const xmlHandle = await dirHandle.getFileHandle('data.xml');
+                    const xmlFile = await xmlHandle.getFile();
+                    const xmlText = await xmlFile.text();
+                    const parser = new DOMParser();
+                    xmlDoc = parser.parseFromString(xmlText, 'text/xml');
+                } catch (err) {
+                    alert('لم يتم العثور على ملف data.json أو data.xml داخل المجلد المختار.\nيرجى التأكد من استخراج ملفات النسخة الاحتياطية واختيار المجلد الصحيح.');
+                    return;
                 }
-            }
-            if (Array.isArray(jsonData.books)) {
-                for (const b of jsonData.books) {
-                    await updateItem(BOOKS_STORE, b);
-                }
-            }
-        } else if (xmlDoc) {
-            const materialNodes = xmlDoc.querySelectorAll('materials > material');
-            for (const node of materialNodes) {
-                const id = node.getAttribute('id') || Date.now().toString();
-                const getField = (f) => node.querySelector(f) ? node.querySelector(f).textContent : '';
-                const fileName = getField('file');
-                const rawName = fileName ? fileName.split('_').slice(1).join('_') : '';
-                
-                const material = {
-                    id: id,
-                    name: getField('name'),
-                    school: getField('school'),
-                    teacher: getField('teacher'),
-                    grade: getField('grade'),
-                    sides: getField('sides'),
-                    price: getField('price'),
-                    fileName: rawName || fileName,
-                    fileId: id,
-                    thumbnail: getField('thumbnail') || null,
-                    dateAdded: new Date().toISOString()
-                };
-                await updateItem(MATERIALS_STORE, material);
             }
             
-            const bookNodes = xmlDoc.querySelectorAll('books > book');
-            for (const node of bookNodes) {
-                const id = node.getAttribute('id') || Date.now().toString();
-                const getField = (f) => node.querySelector(f) ? node.querySelector(f).textContent : '';
-                const fileName = getField('file');
-                const rawName = fileName ? fileName.split('_').slice(1).join('_') : '';
+            // Clear metadata stores (keep files store empty to save memory!)
+            const transMat = db.transaction(MATERIALS_STORE, 'readwrite');
+            transMat.objectStore(MATERIALS_STORE).clear();
+            const transBook = db.transaction(BOOKS_STORE, 'readwrite');
+            transBook.objectStore(BOOKS_STORE).clear();
+            const transFile = db.transaction(FILES_STORE, 'readwrite');
+            transFile.objectStore(FILES_STORE).clear();
+            
+            // Save directory handle
+            indexLinkedDirectoryHandle = dirHandle;
+            const transSave = db.transaction(FILES_STORE, 'readwrite');
+            transSave.objectStore(FILES_STORE).put({ id: '__linked_dir_handle__', handle: dirHandle, name: dirHandle.name });
+            
+            // Import Metadata
+            if (jsonData) {
+                if (Array.isArray(jsonData.materials)) {
+                    for (const m of jsonData.materials) {
+                        await updateItem(MATERIALS_STORE, m);
+                    }
+                }
+                if (Array.isArray(jsonData.books)) {
+                    for (const b of jsonData.books) {
+                        await updateItem(BOOKS_STORE, b);
+                    }
+                }
+            } else if (xmlDoc) {
+                const materialNodes = xmlDoc.querySelectorAll('materials > material');
+                for (const node of materialNodes) {
+                    const id = node.getAttribute('id') || Date.now().toString();
+                    const getField = (f) => node.querySelector(f) ? node.querySelector(f).textContent : '';
+                    const fileName = getField('file');
+                    const rawName = fileName ? fileName.replace(/^\d+[\s_\-]+/, '') : '';
+                    
+                    const material = {
+                        id: id,
+                        name: getField('name'),
+                        school: getField('school'),
+                        teacher: getField('teacher'),
+                        grade: getField('grade'),
+                        sides: getField('sides'),
+                        price: getField('price'),
+                        fileName: rawName || fileName,
+                        fileId: id,
+                        thumbnail: getField('thumbnail') || null,
+                        dateAdded: new Date().toISOString()
+                    };
+                    await updateItem(MATERIALS_STORE, material);
+                }
                 
-                const book = {
-                    id: id,
-                    name: getField('name'),
-                    grade: getField('grade'),
-                    price: getField('price'),
-                    fileName: rawName || fileName,
-                    fileId: id,
-                    thumbnail: getField('thumbnail') || null,
-                    dateAdded: new Date().toISOString()
-                };
-                await updateItem(BOOKS_STORE, book);
+                const bookNodes = xmlDoc.querySelectorAll('books > book');
+                for (const node of bookNodes) {
+                    const id = node.getAttribute('id') || Date.now().toString();
+                    const getField = (f) => node.querySelector(f) ? node.querySelector(f).textContent : '';
+                    const fileName = getField('file');
+                    const rawName = fileName ? fileName.replace(/^\d+[\s_\-]+/, '') : '';
+                    
+                    const book = {
+                        id: id,
+                        name: getField('name'),
+                        grade: getField('grade'),
+                        price: getField('price'),
+                        fileName: rawName || fileName,
+                        fileId: id,
+                        thumbnail: getField('thumbnail') || null,
+                        dateAdded: new Date().toISOString()
+                    };
+                    await updateItem(BOOKS_STORE, book);
+                }
             }
+            
+            await loadEducationalData();
+            await updateHomeStorageButton();
+        } else {
+            // Fallback for non-Chromium browsers (Firefox / Safari / HTTP)
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.webkitdirectory = true;
+            input.directory = true;
+            input.multiple = true;
+            input.style.display = 'none';
+            document.body.appendChild(input);
+            
+            input.onchange = async () => {
+                try {
+                    const files = Array.from(input.files);
+                    if (files.length === 0) return;
+                    
+                    let jsonFile = files.find(f => f.name.toLowerCase() === 'data.json');
+                    let xmlFile = files.find(f => f.name.toLowerCase() === 'data.xml');
+                    
+                    if (!jsonFile && !xmlFile) {
+                        alert('لم يتم العثور على data.json أو data.xml داخل المجلد المحدد');
+                        return;
+                    }
+                    
+                    // Clear stores
+                    const transMat = db.transaction(MATERIALS_STORE, 'readwrite');
+                    transMat.objectStore(MATERIALS_STORE).clear();
+                    const transBook = db.transaction(BOOKS_STORE, 'readwrite');
+                    transBook.objectStore(BOOKS_STORE).clear();
+                    const transFile = db.transaction(FILES_STORE, 'readwrite');
+                    transFile.objectStore(FILES_STORE).clear();
+                    
+                    // Store files in IndexedDB for offline access
+                    for (const f of files) {
+                        if (f.name.toLowerCase().endsWith('.pdf')) {
+                            const buf = await f.arrayBuffer();
+                            const cleanId = f.name.split('_')[0];
+                            const fileData = {
+                                id: cleanId,
+                                name: f.name,
+                                type: 'application/pdf',
+                                data: buf
+                            };
+                            const trans = db.transaction(FILES_STORE, 'readwrite');
+                            trans.objectStore(FILES_STORE).put(fileData);
+                        }
+                    }
+                    
+                    if (jsonFile) {
+                        const text = await jsonFile.text();
+                        const data = JSON.parse(text);
+                        if (Array.isArray(data.materials)) {
+                            for (const m of data.materials) await updateItem(MATERIALS_STORE, m);
+                        }
+                        if (Array.isArray(data.books)) {
+                            for (const b of data.books) await updateItem(BOOKS_STORE, b);
+                        }
+                    } else if (xmlFile) {
+                        const text = await xmlFile.text();
+                        const parser = new DOMParser();
+                        const xmlDoc = parser.parseFromString(text, 'text/xml');
+                        
+                        const materialNodes = xmlDoc.querySelectorAll('materials > material');
+                        for (const node of materialNodes) {
+                            const id = node.getAttribute('id') || Date.now().toString();
+                            const getField = (f) => node.querySelector(f) ? node.querySelector(f).textContent : '';
+                            const fileName = getField('file');
+                            const rawName = fileName ? fileName.replace(/^\d+[\s_\-]+/, '') : '';
+                            const material = {
+                                id: id,
+                                name: getField('name'),
+                                school: getField('school'),
+                                teacher: getField('teacher'),
+                                grade: getField('grade'),
+                                sides: getField('sides'),
+                                price: getField('price'),
+                                fileName: rawName || fileName,
+                                fileId: id,
+                                thumbnail: getField('thumbnail') || null,
+                                dateAdded: new Date().toISOString()
+                            };
+                            await updateItem(MATERIALS_STORE, material);
+                        }
+                        
+                        const bookNodes = xmlDoc.querySelectorAll('books > book');
+                        for (const node of bookNodes) {
+                            const id = node.getAttribute('id') || Date.now().toString();
+                            const getField = (f) => node.querySelector(f) ? node.querySelector(f).textContent : '';
+                            const fileName = getField('file');
+                            const rawName = fileName ? fileName.replace(/^\d+[\s_\-]+/, '') : '';
+                            const book = {
+                                id: id,
+                                name: getField('name'),
+                                grade: getField('grade'),
+                                price: getField('price'),
+                                fileName: rawName || fileName,
+                                fileId: id,
+                                thumbnail: getField('thumbnail') || null,
+                                dateAdded: new Date().toISOString()
+                            };
+                            await updateItem(BOOKS_STORE, book);
+                        }
+                    }
+                    
+                    await loadEducationalData();
+                    alert('تم استيراد المجلد والبيانات بنجاح!');
+                } catch (err) {
+                    console.error('Fallback folder import error:', err);
+                    alert('حدث خطأ أثناء قراءة المجلد: ' + err.message);
+                } finally {
+                    document.body.removeChild(input);
+                }
+            };
+            input.click();
         }
-        
-        await loadEducationalData();
-        await updateHomeStorageButton();
     } catch (error) {
-        if (error.name === 'AbortError') {
-            // User cancelled picker dialog
-            return;
-        }
+        if (error.name === 'AbortError') return;
         console.error('Error linking local directory on home:', error);
         alert('حدث خطأ أثناء ربط المجلد: ' + error.message);
     }
@@ -553,7 +805,7 @@ async function openPreviewModal(fileId, title, badgeText, fileName) {
     
     if (fileId || fileName) {
         try {
-            const blob = await getPDFBlob(fileId, fileName);
+            const blob = await getPDFBlob(fileId, fileName, true);
             if (blob) {
                 const url = URL.createObjectURL(blob);
                 
@@ -597,11 +849,24 @@ function closePreviewModal(e) {
 }
 
 // Download a file
-async function downloadFile(fileId, fileName) {
+async function downloadFile(fileId, fileName, itemName = null, itemId = null) {
     try {
-        const blob = await getPDFBlob(fileId, fileName);
+        let blob = await getPDFBlob(fileId, fileName, true, itemId, itemName);
+        
+        // If not found and showDirectoryPicker is supported, prompt to re-link folder
+        if (!blob && window.showDirectoryPicker) {
+            const shouldReselect = confirm(
+                'ملف الـ PDF غير متوفر في المسار الحالي.\n\n' +
+                'هل ترغب في تحديد / إعادة اختيار مجلد المواد والكتب على جهازك للوصول إلى الملفات فوراً؟'
+            );
+            if (shouldReselect) {
+                await linkLocalDataDirectory();
+                blob = await getPDFBlob(fileId, fileName, true, itemId, itemName);
+            }
+        }
+        
         if (!blob) {
-            alert('عذراً، ملف الـ PDF غير متوفر. إذا كنت تستخدم مجلد محلي، يرجى النقر على زر "مجلد محلي" في الأعلى وإعادة تحديد المجلد.');
+            alert('عذراً، ملف الـ PDF غير متوفر (' + (fileName || itemName || 'الملف') + ').\nيرجى النقر على زر "مجلد محلي" في الأعلى والتأكد من اختيار المجلد الذي يحتوي على الملفات.');
             return;
         }
         
@@ -615,10 +880,10 @@ async function downloadFile(fileId, fileName) {
         setTimeout(() => {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-        }, 150);
+        }, 200);
     } catch (error) {
         console.error('Error downloading file:', error);
-        alert('حدث خطأ أثناء تحميل الملف');
+        alert('حدث خطأ أثناء تحميل الملف: ' + error.message);
     }
 }
 
