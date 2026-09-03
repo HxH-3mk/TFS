@@ -491,31 +491,40 @@ input[type="tel"],
     cursor: pointer;
 }
 
+.file-drop-icon,
 .upload-icon {
     color: var(--primary);
     margin-bottom: 0.25rem;
 }
 
+.file-drop-text,
 .upload-title {
     font-weight: 700;
     font-size: 1rem;
     color: var(--text-primary);
 }
 
+.file-drop-hint,
 .upload-hint {
     font-size: 0.8rem;
     color: var(--text-muted);
 }
 
+.file-name-tag,
 .file-selected-tag {
-    display: inline-block;
-    padding: 0.35rem 0.85rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.4rem 0.95rem;
     background-color: var(--success-light);
     color: var(--success);
+    border: 1px solid rgba(16, 185, 129, 0.3);
     border-radius: var(--radius-full);
-    font-size: 0.82rem;
+    font-size: 0.84rem;
     font-weight: 700;
     margin-top: 0.5rem;
+    max-width: 90%;
+    word-break: break-all;
 }
 
 /* Preview Box */
@@ -630,6 +639,17 @@ input[type="tel"],
     transform: translateY(-1px);
 }
 
+.btn-secondary {
+    background-color: var(--bg-alt);
+    color: var(--text-secondary);
+    border: 1.5px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+    background-color: var(--border-hover);
+    color: var(--text-primary);
+}
+
 .btn-outline-dark {
     background-color: transparent;
     color: var(--text-secondary);
@@ -639,6 +659,11 @@ input[type="tel"],
 .btn-outline-dark:hover {
     background-color: var(--bg-alt);
     border-color: var(--text-secondary);
+    color: var(--text-primary);
+}
+
+.btn-block {
+    width: 100%;
 }
 
 .btn-warning {

@@ -444,15 +444,20 @@ body {
 /* Cards Grid & Stage Containers */
 /* Stage Main Cards & Container Layout */
 .stage-main-card {
-    background: #2e3c5e;
+    background: var(--bg-surface);
     border: 1.5px solid var(--border-color);
-    border-radius: 27px;
+    border-radius: 20px;
     padding: 2rem;
     margin-bottom: 2.75rem;
     box-shadow: var(--shadow-md);
     transition: var(--transition-normal);
     position: relative;
     overflow: hidden;
+}
+
+[data-theme="dark"] .stage-main-card {
+    background: #141c2e;
+    border-color: #1e293b;
 }
 
 .stage-main-card:hover {
@@ -466,7 +471,7 @@ body {
     justify-content: space-between;
     padding-bottom: 1.25rem;
     margin-bottom: 2rem;
-    border-bottom: 2px solid rgba(255, 255, 255, 0.15);
+    border-bottom: 2px solid var(--border-color);
     flex-wrap: wrap;
     gap: 1rem;
 }
@@ -481,8 +486,8 @@ body {
     font-size: 2rem;
     width: 52px;
     height: 52px;
-    background: rgba(255, 255, 255, 0.12);
-    border: 1.5px solid rgba(255, 255, 255, 0.2);
+    background: var(--bg-alt);
+    border: 1.5px solid var(--border-color);
     border-radius: var(--radius-lg);
     display: flex;
     align-items: center;
@@ -493,13 +498,13 @@ body {
 .stage-main-title {
     font-size: 1.4rem;
     font-weight: 900;
-    color: #ffffff;
+    color: var(--text-primary);
     line-height: 1.2;
 }
 
 .stage-main-desc {
     font-size: 0.88rem;
-    color: #cbd5e1;
+    color: var(--text-secondary);
     font-weight: 500;
 }
 
@@ -510,7 +515,7 @@ body {
     font-weight: 700;
     padding: 0.35rem 0.95rem;
     border-radius: var(--radius-full);
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.25);
+    box-shadow: 0 4px 10px rgba(67, 97, 238, 0.25);
 }
 
 /* Quick Grade Navigation Bar */
@@ -812,11 +817,11 @@ body {
     bottom: 10px;
     background: var(--bg-surface);
     color: var(--text-primary);
-    border: 1px solid var(--border-color);
-    padding: 0.35rem 0.85rem;
+    border: 1.5px solid var(--border-color);
+    padding: 0.4rem 0.95rem;
     border-radius: var(--radius-full);
-    font-size: 0.8rem;
-    font-weight: 600;
+    font-size: 0.82rem;
+    font-weight: 700;
     display: flex;
     align-items: center;
     gap: 0.4rem;
@@ -824,11 +829,19 @@ body {
     transform: translateY(10px);
     transition: var(--transition-normal);
     box-shadow: var(--shadow-md);
+    cursor: pointer;
 }
 
 .card-preview-area:hover .preview-overlay-btn {
     opacity: 1;
     transform: translateY(0);
+}
+
+.preview-overlay-btn:hover {
+    background: var(--primary-gradient);
+    color: #ffffff;
+    border-color: transparent;
+    box-shadow: 0 4px 12px rgba(67, 97, 238, 0.35);
 }
 
 /* Card Body */
@@ -865,7 +878,7 @@ body {
     border-radius: var(--radius-sm);
     font-size: 0.8rem;
     color: var(--text-secondary);
-    font-weight: 500;
+    font-weight: 600;
 }
 
 .chip svg {
@@ -891,14 +904,20 @@ body {
 .price-label {
     font-size: 0.7rem;
     color: var(--text-muted);
-    font-weight: 500;
+    font-weight: 600;
 }
 
 .price-value {
-    font-size: 2.2rem;
+    font-size: 1.5rem;
     font-weight: 800;
-    color: #ffffff;
+    color: var(--text-primary);
     font-family: 'Plus Jakarta Sans', 'Cairo', sans-serif;
+    line-height: 1.2;
+}
+
+.price-tag small {
+    color: var(--text-secondary);
+    font-weight: 600;
 }
 
 .download-link {

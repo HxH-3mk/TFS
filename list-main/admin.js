@@ -263,10 +263,18 @@ function renderAdminList(type, items) {
             itemCard.className = 'item-card';
             
             const previewId = `admin-preview-${type}-${item.id}`;
+            const thumbnailInner = item.thumbnail 
+                ? `<img src="${item.thumbnail}" alt="${escapeHtml(item.name)}" style="max-width:100%; max-height:100%; object-fit:contain; border-radius:4px; background:#fff;">` 
+                : `<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-muted)"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>`;
+            
+            const bookThumbInner = item.thumbnail 
+                ? `<img src="${item.thumbnail}" alt="${escapeHtml(item.name)}" style="max-width:100%; max-height:100%; object-fit:contain; border-radius:4px; background:#fff;">` 
+                : `<svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-muted)"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>`;
+
             if (type === 'material') {
                 itemCard.innerHTML = `
                     <div class="item-thumbnail" id="${previewId}">
-                        <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-muted)"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline></svg>
+                        ${thumbnailInner}
                     </div>
                     <div class="item-details">
                         <div class="item-title">${escapeHtml(item.name)}</div>
@@ -295,7 +303,7 @@ function renderAdminList(type, items) {
             } else {
                 itemCard.innerHTML = `
                     <div class="item-thumbnail" id="${previewId}">
-                        <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" stroke-width="1.5" style="color:var(--text-muted)"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+                        ${bookThumbInner}
                     </div>
                     <div class="item-details">
                         <div class="item-title">${escapeHtml(item.name)}</div>
@@ -320,8 +328,8 @@ function renderAdminList(type, items) {
             
             container.appendChild(itemCard);
             
-            // Display PDF preview
-            if (item.fileId || item.fileName || item.id) {
+            // Display PDF preview if thumbnail is not available
+            if (!item.thumbnail && (item.fileId || item.fileName || item.id)) {
                 renderPdfPreviewFromDB(item.fileId, previewId, item.fileName, item.id, item.name);
             }
         });
