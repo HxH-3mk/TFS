@@ -57,6 +57,13 @@
                     </svg>
                 </button>
 
+                <button type="button" class="nav-btn nav-btn-outline" id="btnCloudSyncHome" onclick="openCloudSettingsModal()" title="المزامنة السحابية عبر Google Drive">
+                    <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path>
+                    </svg>
+                    <span id="cloudSyncHomeText">سحابة Drive</span>
+                </button>
+
                 <button type="button" class="nav-btn nav-btn-outline" id="btnLinkFolderHome" onclick="linkLocalDataDirectory()" title="ربط مجلد المذكرات والكتب على جهازك">
                     <svg viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" stroke-width="2">
                         <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"></path>
@@ -183,6 +190,61 @@
         </div>
     </div>
 
+    <!-- نافذة إعدادات الربط بالسحابة (Google Drive Modal) -->
+    <div id="cloudModal" class="modal" onclick="closeCloudModal(event)">
+        <div class="modal-dialog" onclick="event.stopPropagation()" style="max-width: 560px;">
+            <div class="modal-header">
+                <div class="modal-title-wrap">
+                    <h3 class="modal-title">☁️ المزامنة السحابية (Google Drive)</h3>
+                </div>
+                <button type="button" class="modal-close-btn" onclick="closeCloudModal()">✕</button>
+            </div>
+            <div class="modal-body" style="background:var(--bg-surface); padding:1.75rem; min-height:auto; display:block;">
+                <p style="font-size:0.9rem; color:var(--text-secondary); margin-bottom:1.25rem; line-height:1.6;">
+                    قم بإدخال رابط تطبيق الويب (Google Apps Script Web App) لمزامنة المذكرات والكتب وملفات الـ PDF مباشرة من Google Drive على أي جهاز:
+                </p>
+                <div class="form-group" style="margin-bottom:1.25rem;">
+                    <label style="font-size:0.88rem; font-weight:700; color:var(--text-primary); margin-bottom:0.4rem; display:block;">رابط تطبيق الويب (Web App URL):</label>
+                    <input type="url" id="cloudApiUrlInput" placeholder="https://script.google.com/macros/s/.../exec" style="width:100%; padding:0.75rem 1rem; border:1.5px solid var(--border-color); border-radius:var(--radius-md); background:var(--bg-input); color:var(--text-primary); font-family:inherit; font-size:0.9rem; outline:none;" dir="ltr">
+                </div>
+                <div id="cloudStatusMsg" style="display:none; padding:0.75rem 1rem; border-radius:var(--radius-md); font-size:0.85rem; font-weight:600; margin-bottom:1rem;"></div>
+                <div style="display:flex; gap:0.75rem; justify-content:space-between; flex-wrap:wrap;">
+                    <button type="button" class="nav-btn nav-btn-outline" style="color:var(--danger);" onclick="disconnectCloudFromModal()">فصل الرابط السحابي</button>
+                    <div style="display:flex; gap:0.75rem;">
+                        <button type="button" class="nav-btn nav-btn-outline" onclick="testCloudConnectionFromModal()">فحص الاتصال</button>
+                        <button type="button" class="nav-btn nav-btn-primary" onclick="saveCloudApiUrlFromModal()">حفظ ومزامنة الآن</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- نافذة / مؤشر تقدم التحميل (Download Progress Indicator) -->
+    <div id="downloadProgressOverlay" class="download-progress-overlay" style="display: none;">
+        <div class="download-progress-card">
+            <div class="download-progress-header">
+                <div class="download-progress-icon">
+                    <svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                        <polyline points="7 10 12 15 17 10"></polyline>
+                        <line x1="12" y1="15" x2="12" y2="3"></line>
+                    </svg>
+                </div>
+                <div class="download-progress-info">
+                    <h4 id="downloadProgressTitle" class="download-progress-title">جاري تجهيز الملف...</h4>
+                    <p id="downloadProgressSub" class="download-progress-sub">يرجى الانتظار قليلاً</p>
+                </div>
+            </div>
+            <div class="download-progress-bar-wrap">
+                <div id="downloadProgressBar" class="download-progress-bar" style="width: 0%;"></div>
+            </div>
+            <div class="download-progress-footer">
+                <span id="downloadProgressPercent">0%</span>
+                <span id="downloadProgressSource">قراءة الملف...</span>
+            </div>
+        </div>
+    </div>
+
     <!-- PDF.js Scripts -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.11.338/pdf.min.js"></script>
     <script>
@@ -198,6 +260,7 @@
             }
         }
     </script>
+    <script src="default-data.js"></script>
     <script src="index.js"></script>
 </body>
 </html>

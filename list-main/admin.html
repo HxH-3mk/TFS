@@ -409,6 +409,71 @@
 
         <!-- قسم النسخ الاحتياطي ومجلد الجهاز -->
         <div id="tab-backup" class="tab-content">
+            
+            <!-- بطاقة المزامنة السحابية عبر Google Drive -->
+            <div class="admin-card" style="margin-bottom: 2rem; border-right: 4px solid var(--primary); background: var(--bg-surface);">
+                <div style="display: flex; align-items: flex-start; justify-content: space-between; flex-wrap: wrap; gap: 1.25rem; margin-bottom: 1.5rem;">
+                    <div style="display: flex; align-items: center; gap: 1rem;">
+                        <div style="width: 52px; height: 52px; border-radius: var(--radius-md); background: var(--primary-light); color: var(--primary); display: flex; align-items: center; justify-content: center; font-size: 1.6rem;">
+                            ☁️
+                        </div>
+                        <div>
+                            <h3 style="font-size: 1.25rem; font-weight: 800; margin-bottom: 0.25rem; color: var(--text-primary);">المزامنة السحابية عبر Google Drive (لكافة الأجهزة)</h3>
+                            <p id="cloudSyncStatusDesc" style="font-size: 0.88rem; color: var(--text-secondary);">
+                                اربط رابط تطبيق الويب (Google Apps Script) لتصل إلى مذكراتك وكتبك من أي جهاز (جوال، كمبيوتر، تابلت) مباشرة وبدون نقل ملفات.
+                            </p>
+                        </div>
+                    </div>
+                    <span id="cloudConnectionBadge" style="padding: 0.35rem 0.85rem; border-radius: var(--radius-full); font-size: 0.82rem; font-weight: 700; background: var(--bg-alt); color: var(--text-secondary); border: 1px solid var(--border-color);">
+                        غير متصل
+                    </span>
+                </div>
+
+                <div style="background: var(--bg-alt); padding: 1.25rem; border-radius: var(--radius-md); border: 1px solid var(--border-color); margin-bottom: 1.25rem;">
+                    <label for="gdriveApiUrlInput" style="font-size: 0.88rem; font-weight: 700; color: var(--text-primary); margin-bottom: 0.5rem; display: block;">
+                        رابط تطبيق الويب (Google Apps Script Web App URL):
+                    </label>
+                    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                        <input type="url" id="gdriveApiUrlInput" placeholder="https://script.google.com/macros/s/.../exec" dir="ltr" style="flex: 1; min-width: 280px; padding: 0.75rem 1rem; border: 1.5px solid var(--border-color); border-radius: var(--radius-md); background: var(--bg-input); color: var(--text-primary); font-family: inherit; font-size: 0.9rem; outline: none;">
+                        <button type="button" class="btn btn-primary" onclick="testAndSaveCloudApiUrl()">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"></polyline></svg>
+                            <span>حفظ واختبار الاتصال</span>
+                        </button>
+                    </div>
+                    <small style="display: block; margin-top: 0.5rem; color: var(--text-muted); font-size: 0.8rem;">
+                        📁 الكود البرمجي جاهز داخل مجلد <code>gdrive-sync/Code.gs</code>. انشره في Google Apps Script وانسخ الرابط هنا.
+                    </small>
+                </div>
+
+                <!-- أزرار الإجراءات السحابية المتقدمة -->
+                <div style="display: flex; gap: 0.75rem; flex-wrap: wrap; align-items: center; justify-content: space-between;">
+                    <div style="display: flex; gap: 0.75rem; flex-wrap: wrap;">
+                        <button type="button" class="btn btn-primary" id="btnPushAllToCloud" onclick="pushAllDataAndFilesToCloud()">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path><polyline points="17 8 12 3 7 8"></polyline><line x1="12" y1="3" x2="12" y2="15"></line></svg>
+                            <span>مزامنة ورفع كافة البيانات والملفات إلى درايف الآن</span>
+                        </button>
+                        <button type="button" class="btn btn-warning" onclick="cleanRemoteCloudFolder()">
+                            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path></svg>
+                            <span>تنظيف وإفراغ المجلد السحابي القديم</span>
+                        </button>
+                    </div>
+                    <button type="button" class="btn btn-secondary" onclick="disconnectCloudApi()">
+                        <span>فصل السحابة</span>
+                    </button>
+                </div>
+
+                <!-- شريط تقدم الرفع السحابي -->
+                <div id="cloudUploadProgressWrap" style="display: none; margin-top: 1.25rem; padding-top: 1.25rem; border-top: 1px dashed var(--border-color);">
+                    <div style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 700; margin-bottom: 0.4rem; color: var(--text-primary);">
+                        <span id="cloudUploadStatusText">جاري الرفع إلى Google Drive...</span>
+                        <span id="cloudUploadPercentText">0%</span>
+                    </div>
+                    <div style="width: 100%; height: 8px; background: var(--bg-alt); border-radius: var(--radius-full); overflow: hidden; border: 1px solid var(--border-color);">
+                        <div id="cloudProgressBar" style="width: 0%; height: 100%; background: var(--primary-gradient); transition: width 0.3s ease;"></div>
+                    </div>
+                </div>
+            </div>
+
             <!-- حالة المجلد المرتبط حالياً -->
             <div class="admin-card" style="margin-bottom: 2rem; border-right: 4px solid var(--success);">
                 <div style="display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1rem;">
@@ -519,6 +584,7 @@
         </div>
     </div>
     
+    <script src="default-data.js"></script>
     <script src="admin.js"></script>
 </body>
 </html>

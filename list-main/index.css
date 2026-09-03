@@ -1157,4 +1157,104 @@ body {
     }
 }
 
+/* Download Progress Floating Toast/Card */
+.download-progress-overlay {
+    position: fixed;
+    bottom: 2rem;
+    left: 2rem;
+    z-index: 10000;
+    pointer-events: auto;
+    animation: dlSlideUp 0.3s ease-out;
+}
+
+@media (max-width: 640px) {
+    .download-progress-overlay {
+        bottom: 1rem;
+        left: 1rem;
+        right: 1rem;
+    }
+}
+
+.download-progress-card {
+    background: var(--bg-surface);
+    border: 1.5px solid var(--border-color);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.22);
+    padding: 1.25rem 1.5rem;
+    width: 360px;
+    max-width: 100%;
+}
+
+.download-progress-header {
+    display: flex;
+    align-items: center;
+    gap: 0.85rem;
+    margin-bottom: 0.85rem;
+}
+
+.download-progress-icon {
+    width: 42px;
+    height: 42px;
+    border-radius: var(--radius-md);
+    background: var(--primary-light);
+    color: var(--primary);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.download-progress-title {
+    font-size: 0.95rem;
+    font-weight: 800;
+    color: var(--text-primary);
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 250px;
+}
+
+.download-progress-sub {
+    font-size: 0.78rem;
+    color: var(--text-muted);
+    margin: 0.2rem 0 0 0;
+}
+
+.download-progress-bar-wrap {
+    width: 100%;
+    height: 7px;
+    background: var(--bg-alt);
+    border-radius: var(--radius-full);
+    overflow: hidden;
+    margin-bottom: 0.5rem;
+    border: 1px solid var(--border-color);
+}
+
+.download-progress-bar {
+    height: 100%;
+    background: var(--primary-gradient);
+    border-radius: var(--radius-full);
+    transition: width 0.25s ease;
+}
+
+.download-progress-footer {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: var(--text-secondary);
+}
+
+@keyframes dlSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
 

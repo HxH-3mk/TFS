@@ -300,6 +300,155 @@ async function getStoredDirectoryHandle() {
     }
 }
 
+// --- Google Drive Cloud Sync Configuration ---
+function getCloudApiUrl() {
+    return (localStorage.getItem('gdrive_api_url') || '').trim();
+}
+
+function setCloudApiUrl(url) {
+    if (url && url.trim() !== '') {
+        localStorage.setItem('gdrive_api_url', url.trim());
+    } else {
+        localStorage.removeItem('gdrive_api_url');
+    }
+}
+
+// Update the cloud button and indicator in the home page
+function updateCloudStorageButton() {
+    const btn = document.getElementById('btnCloudSyncHome');
+    const btnText = document.getElementById('cloudSyncHomeText');
+    const cloudUrl = getCloudApiUrl();
+    
+    if (btn && btnText) {
+        if (cloudUrl) {
+            btnText.textContent = '☁️ متصل بسحابة Drive';
+            btn.style.borderColor = 'var(--primary)';
+            btn.style.color = 'var(--primary)';
+            btn.style.background = 'var(--primary-light)';
+            btn.title = 'متصل بسحابة Google Drive (انقر لتعديل الرابط أو المزامنة)';
+        } else {
+            btnText.textContent = 'سحابة Drive';
+            btn.style.borderColor = '';
+            btn.style.color = '';
+            btn.style.background = '';
+            btn.title = 'ربط سحابة Google Drive للمزامنة مع كافة الأجهزة';
+        }
+    }
+}
+
+// Open Cloud Settings Modal
+function openCloudSettingsModal() {
+    const modal = document.getElementById('cloudModal');
+    const input = document.getElementById('cloudApiUrlInput');
+    const statusMsg = document.getElementById('cloudStatusMsg');
+    
+    if (input) input.value = getCloudApiUrl();
+    if (statusMsg) statusMsg.style.display = 'none';
+    if (modal) modal.classList.add('active');
+}
+
+// Close Cloud Settings Modal
+function closeCloudModal(e) {
+    if (e && e.target && e.target.classList.contains('modal-dialog')) return;
+    const modal = document.getElementById('cloudModal');
+    if (modal) modal.classList.remove('active');
+}
+
+// Test Cloud Connection from Modal
+async function testCloudConnectionFromModal() {
+    const input = document.getElementById('cloudApiUrlInput');
+    const statusMsg = document.getElementById('cloudStatusMsg');
+    const url = (input ? input.value : '').trim();
+    
+    if (!url) {
+        alert('الرجاء إدخال رابط Google Apps Script Web App');
+        return;
+    }
+    
+    if (statusMsg) {
+        statusMsg.style.display = 'block';
+        statusMsg.style.background = 'var(--bg-alt)';
+        statusMsg.style.color = 'var(--text-primary)';
+        statusMsg.textContent = '⏳ جاري فحص الاتصال بسحابة Google Drive...';
+    }
+    
+    try {
+        const pingUrl = url + (url.includes('?') ? '&' : '?') + 'action=ping&t=' + Date.now();
+        const resp = await fetch(pingUrl);
+        const data = await resp.json();
+        
+        if (data && data.status === 'ok') {
+            if (statusMsg) {
+                statusMsg.style.background = 'var(--success-light)';
+                statusMsg.style.color = 'var(--success)';
+                statusMsg.textContent = `✅ ${data.message} (المجلد: ${data.folderName || 'Educational_Materials_Storage'})`;
+            }
+        } else {
+            throw new Error((data && data.message) || 'استجابة غير صالحة');
+        }
+    } catch (err) {
+        if (statusMsg) {
+            statusMsg.style.background = 'var(--danger-light)';
+            statusMsg.style.color = 'var(--danger)';
+            statusMsg.textContent = `❌ تعذر الاتصال: ${err.message}. تأكد من نشر السكربت بصلاحية "Anyone" (أي مستخدم).`;
+        }
+    }
+}
+
+// Save Cloud API URL and sync data
+async function saveCloudApiUrlFromModal() {
+    const input = document.getElementById('cloudApiUrlInput');
+    const url = (input ? input.value : '').trim();
+    
+    if (!url) {
+        alert('الرجاء إدخال رابط Google Apps Script Web App');
+        return;
+    }
+    
+    setCloudApiUrl(url);
+    updateCloudStorageButton();
+    
+    try {
+        const getDataUrl = url + (url.includes('?') ? '&' : '?') + 'action=getData&t=' + Date.now();
+        const resp = await fetch(getDataUrl);
+        const data = await resp.json();
+        
+        if (data && (Array.isArray(data.materials) || Array.isArray(data.books))) {
+            const transMat = db.transaction(MATERIALS_STORE, 'readwrite');
+            transMat.objectStore(MATERIALS_STORE).clear();
+            const transBook = db.transaction(BOOKS_STORE, 'readwrite');
+            transBook.objectStore(BOOKS_STORE).clear();
+            
+            if (Array.isArray(data.materials)) {
+                for (const m of data.materials) await updateItem(MATERIALS_STORE, m);
+            }
+            if (Array.isArray(data.books)) {
+                for (const b of data.books) await updateItem(BOOKS_STORE, b);
+            }
+            
+            await loadEducationalData();
+            closeCloudModal();
+            alert('تم ربط سحابة Google Drive ومزامنة كافة المذكرات والكتب بنجاح!');
+        } else {
+            closeCloudModal();
+            alert('تم حفظ الرابط السحابي بنجاح!');
+        }
+    } catch (err) {
+        console.warn('Cloud sync error on save:', err);
+        closeCloudModal();
+        alert('تم حفظ الرابط، ولكن حدث خطأ أثناء جلب البيانات: ' + err.message);
+    }
+}
+
+// Disconnect Cloud API from Modal
+function disconnectCloudFromModal() {
+    if (!confirm('هل تريد فصل الرابط السحابي والعودة للتخزين العادي؟')) return;
+    setCloudApiUrl('');
+    updateCloudStorageButton();
+    closeCloudModal();
+    alert('تم فصل الرابط السحابي.');
+}
+
 // Update the storage button text on the home page
 async function updateHomeStorageButton() {
     if (!indexLinkedDirectoryHandle) {
@@ -320,122 +469,197 @@ async function updateHomeStorageButton() {
             btn.title = 'ربط مجلد المذكرات والكتب على جهازك';
         }
     }
+    updateCloudStorageButton();
 }
 
-// Helper: Deep and robust search for PDF file inside directory handle and subfolders
+// --- Download Progress UI Helpers ---
+let downloadProgressTimer = null;
+
+function showDownloadProgress(title, percent = 0, sub = 'يرجى الانتظار قليلاً...', source = 'جاري المعالجة...') {
+    const overlay = document.getElementById('downloadProgressOverlay');
+    const titleEl = document.getElementById('downloadProgressTitle');
+    const subEl = document.getElementById('downloadProgressSub');
+    const barEl = document.getElementById('downloadProgressBar');
+    const percentEl = document.getElementById('downloadProgressPercent');
+    const sourceEl = document.getElementById('downloadProgressSource');
+    
+    if (downloadProgressTimer) {
+        clearTimeout(downloadProgressTimer);
+        downloadProgressTimer = null;
+    }
+    
+    if (overlay) overlay.style.display = 'block';
+    if (titleEl) titleEl.textContent = title ? `جاري تجهيز: ${title}` : 'جاري تجهيز الملف...';
+    if (subEl) subEl.textContent = sub;
+    if (barEl) barEl.style.width = `${Math.min(100, Math.max(0, percent))}%`;
+    if (percentEl) percentEl.textContent = `${Math.round(percent)}%`;
+    if (sourceEl) sourceEl.textContent = source;
+}
+
+function updateDownloadProgress(percent, sub = null, source = null) {
+    const subEl = document.getElementById('downloadProgressSub');
+    const barEl = document.getElementById('downloadProgressBar');
+    const percentEl = document.getElementById('downloadProgressPercent');
+    const sourceEl = document.getElementById('downloadProgressSource');
+    
+    if (barEl) barEl.style.width = `${Math.min(100, Math.max(0, percent))}%`;
+    if (percentEl) percentEl.textContent = `${Math.round(percent)}%`;
+    if (sub && subEl) subEl.textContent = sub;
+    if (source && sourceEl) sourceEl.textContent = source;
+}
+
+function finishDownloadProgress(message = '✅ تم تجهيز الملف، يبدأ التنزيل الآن...') {
+    updateDownloadProgress(100, message, 'اكتمل التحميل');
+    downloadProgressTimer = setTimeout(() => {
+        const overlay = document.getElementById('downloadProgressOverlay');
+        if (overlay) overlay.style.display = 'none';
+    }, 2000);
+}
+
+function hideDownloadProgress() {
+    const overlay = document.getElementById('downloadProgressOverlay');
+    if (overlay) overlay.style.display = 'none';
+}
+
+// Collect all PDF file handles recursively from directory and subdirectories
+async function collectAllPdfsFromDirectory(dirHandle, maxDepth = 4, currentDepth = 0) {
+    const results = [];
+    if (!dirHandle || currentDepth > maxDepth) return results;
+    
+    try {
+        if (typeof dirHandle.values === 'function' || typeof dirHandle.entries === 'function') {
+            const iterator = dirHandle.values ? dirHandle.values() : dirHandle.entries();
+            for await (const entry of iterator) {
+                const handle = Array.isArray(entry) ? entry[1] : entry;
+                if (!handle) continue;
+                if (handle.kind === 'file') {
+                    if (handle.name && (handle.name.toLowerCase().endsWith('.pdf') || handle.name.toLowerCase().includes('.pdf'))) {
+                        results.push(handle);
+                    }
+                } else if (handle.kind === 'directory') {
+                    const subResults = await collectAllPdfsFromDirectory(handle, maxDepth, currentDepth + 1);
+                    results.push(...subResults);
+                }
+            }
+        }
+    } catch (err) {
+        console.warn('Directory scan notice at depth', currentDepth, err);
+    }
+    return results;
+}
+
+// Deep and robust search for PDF file inside directory handle and all subdirectories
 async function findFileInDirectoryHandle(rootDirHandle, fileId, rawFileName, itemId = null, itemName = null) {
     if (!rootDirHandle) return null;
     
     const idsToTry = [fileId, itemId].filter(Boolean).map(x => x.toString().trim());
     const namesToTry = [rawFileName, itemName].filter(Boolean).map(x => x.toString().trim());
     
-    // Normalization helper for Arabic, punctuation, and case differences
     const norm = (str) => (str || '')
         .normalize('NFC')
         .toLowerCase()
-        .replace(/[\s_\-\.\(\)]+/g, '');
+        .replace(/[\s_\-\.\(\)\[\]]+/g, '');
         
-    const targetNorms = namesToTry.map(n => norm(n.replace(/\.pdf$/i, ''))).filter(Boolean);
+    const tokenize = (str) => (str || '')
+        .toLowerCase()
+        .replace(/\.pdf$/i, '')
+        .split(/[\s_\-\.\(\)\[\]]+/)
+        .filter(x => x && x.length > 1);
+        
+    const itemTokens = [];
+    namesToTry.forEach(n => itemTokens.push(...tokenize(n)));
     
-    // Collect all directories to search: root directory + common subdirectories
-    const dirsToSearch = [rootDirHandle];
-    const subDirNames = ['sample-pdfs', 'sample_pdfs', 'pdfs', 'PDFs', 'files', 'materials', 'books'];
+    // 1. Collect all PDF file handles across all subdirectories recursively
+    const allPdfHandles = await collectAllPdfsFromDirectory(rootDirHandle);
+    if (allPdfHandles.length === 0) return null;
     
-    for (const subName of subDirNames) {
-        try {
-            const subHandle = await rootDirHandle.getDirectoryHandle(subName);
-            if (subHandle) dirsToSearch.push(subHandle);
-        } catch (e) {
-            // Subdir doesn't exist
-        }
-    }
-    
-    // 1. Fast Pass: Direct exact candidates on all candidate directories
+    // 2. Exact candidate matching
     const candidateNames = [];
     for (const cleanId of idsToTry) {
         for (const cleanName of namesToTry) {
-            const cleanNameNoExt = cleanName.replace(/\.pdf$/i, '');
+            const cleanNoExt = cleanName.replace(/\.pdf$/i, '');
             candidateNames.push(`${cleanId}_${cleanName}`);
-            candidateNames.push(`${cleanId}_${cleanNameNoExt}.pdf`);
-            candidateNames.push(`${cleanId}-${cleanNameNoExt}.pdf`);
+            candidateNames.push(`${cleanId}_${cleanNoExt}.pdf`);
+            candidateNames.push(`${cleanId}-${cleanNoExt}.pdf`);
+            candidateNames.push(`${cleanId}-${cleanName}`);
         }
         candidateNames.push(`${cleanId}.pdf`);
     }
     for (const cleanName of namesToTry) {
-        const cleanNameNoExt = cleanName.replace(/\.pdf$/i, '');
+        const cleanNoExt = cleanName.replace(/\.pdf$/i, '');
         candidateNames.push(cleanName);
-        candidateNames.push(`${cleanNameNoExt}.pdf`);
+        candidateNames.push(`${cleanNoExt}.pdf`);
     }
     
-    for (const dir of dirsToSearch) {
-        for (const candidate of candidateNames) {
+    for (const handle of allPdfHandles) {
+        if (candidateNames.includes(handle.name)) {
             try {
-                const fileHandle = await dir.getFileHandle(candidate);
-                const file = await fileHandle.getFile();
+                const file = await handle.getFile();
                 if (file && file.size > 0) return file;
-            } catch (e) {
-                // Try next
+            } catch (e) {}
+        }
+    }
+    
+    // 3. Match by ID prefix (e.g. 1787670050911_... or 1787670050911-...)
+    for (const cleanId of idsToTry) {
+        if (!cleanId) continue;
+        for (const handle of allPdfHandles) {
+            if (handle.name.startsWith(cleanId)) {
+                try {
+                    const file = await handle.getFile();
+                    if (file && file.size > 0) return file;
+                } catch (e) {}
             }
         }
     }
     
-    // 2. Deep Pass: Iterate directory entries with fuzzy and normalized Arabic matching
-    for (const dir of dirsToSearch) {
-        try {
-            if (typeof dir.entries === 'function' || typeof dir.values === 'function') {
-                const iterator = dir.entries ? dir.entries() : dir.values();
-                for await (const entry of iterator) {
-                    const handle = Array.isArray(entry) ? entry[1] : entry;
-                    const name = Array.isArray(entry) ? entry[0] : handle.name;
-                    
-                    if (!handle || handle.kind !== 'file') continue;
-                    if (!name.toLowerCase().endsWith('.pdf') && !name.toLowerCase().includes('.pdf')) continue;
-                    
-                    const entryName = name;
-                    const entryNorm = norm(entryName.replace(/\.pdf$/i, ''));
-                    
-                    // Match by file ID or item ID prefix (e.g., 1788251448243_...)
-                    for (const cleanId of idsToTry) {
-                        if (cleanId && entryName.startsWith(cleanId)) {
-                            try {
-                                const file = await handle.getFile();
-                                if (file && file.size > 0) return file;
-                            } catch (e) {}
-                        }
-                    }
-                    
-                    // Match by normalized text inclusion
-                    for (const targetNorm of targetNorms) {
-                        if (targetNorm && (entryNorm.includes(targetNorm) || targetNorm.includes(entryNorm))) {
-                            try {
-                                const file = await handle.getFile();
-                                if (file && file.size > 0) return file;
-                            } catch (e) {}
-                        }
-                    }
-                    
-                    // Match after stripping leading numeric IDs (e.g., 1709123456_name.pdf -> name.pdf)
-                    const nameWithoutPrefix = entryName.replace(/^\d+[\s_\-]+/, '');
-                    for (const cleanName of namesToTry) {
-                        if (cleanName && norm(nameWithoutPrefix) === norm(cleanName)) {
-                            try {
-                                const file = await handle.getFile();
-                                if (file && file.size > 0) return file;
-                            } catch (e) {}
-                        }
-                    }
-                }
+    // 4. Token-based overlap matching (resilient against hyphens, spaces, rasterized prefixes)
+    let bestHandle = null;
+    let bestScore = 0;
+    
+    for (const handle of allPdfHandles) {
+        const fileTokens = tokenize(handle.name);
+        let score = 0;
+        for (const token of itemTokens) {
+            if (fileTokens.includes(token) || handle.name.toLowerCase().includes(token)) {
+                score++;
             }
-        } catch (iterErr) {
-            console.warn('Error scanning directory entries:', iterErr);
+        }
+        if (score > bestScore && score >= 2) {
+            bestScore = score;
+            bestHandle = handle;
+        }
+    }
+    
+    if (bestHandle) {
+        try {
+            const file = await bestHandle.getFile();
+            if (file && file.size > 0) return file;
+        } catch (e) {}
+    }
+    
+    // 5. Normalized text inclusion
+    const targetNorms = namesToTry.map(n => norm(n.replace(/\.pdf$/i, ''))).filter(Boolean);
+    for (const handle of allPdfHandles) {
+        const entryNorm = norm(handle.name.replace(/\.pdf$/i, ''));
+        for (const targetNorm of targetNorms) {
+            if (targetNorm && (entryNorm.includes(targetNorm) || targetNorm.includes(entryNorm))) {
+                try {
+                    const file = await handle.getFile();
+                    if (file && file.size > 0) return file;
+                } catch (e) {}
+            }
         }
     }
     
     return null;
 }
 
-// Helper to get PDF File/Blob either from linked local directory OR from IndexedDB
-async function getPDFBlob(fileId, rawFileName, isInteractive = false, itemId = null, itemName = null) {
+// Helper to get PDF File/Blob either from linked local directory, IndexedDB, or Google Drive Cloud API
+async function getPDFBlob(fileId, rawFileName, isInteractive = false, itemId = null, itemName = null, onProgress = null) {
+    if (typeof onProgress === 'function') onProgress(10, 'جاري البحث عن الملف وتجهيزه...', 'فحص المصادر');
+    
+    // 1. Priority: Linked Local Directory
     if (!indexLinkedDirectoryHandle) {
         indexLinkedDirectoryHandle = await getStoredDirectoryHandle();
     }
@@ -455,7 +679,6 @@ async function getPDFBlob(fileId, rawFileName, isInteractive = false, itemId = n
                 perm = 'granted';
             }
             
-            // Only request permission during direct user clicks to avoid browser security gesture errors
             if (perm !== 'granted' && isInteractive) {
                 if (typeof indexLinkedDirectoryHandle.requestPermission === 'function') {
                     try {
@@ -467,24 +690,91 @@ async function getPDFBlob(fileId, rawFileName, isInteractive = false, itemId = n
             }
             
             if (perm === 'granted') {
+                if (typeof onProgress === 'function') onProgress(35, 'جاري قراءة الملف من المجلد المحلي...', 'مجلد محلي');
                 const foundFile = await findFileInDirectoryHandle(indexLinkedDirectoryHandle, fileId, rawFileName, itemId, itemName);
-                if (foundFile) return foundFile;
+                if (foundFile) {
+                    if (typeof onProgress === 'function') onProgress(90, 'تم استخراج الملف بنجاح...', 'مجلد محلي');
+                    return foundFile;
+                }
             }
         } catch (dirErr) {
             console.warn('Error reading from linked directory:', dirErr);
         }
     }
     
-    // Fallback: Retrieve from IndexedDB files store
+    // 2. Priority: IndexedDB files store
+    if (typeof onProgress === 'function') onProgress(45, 'فحص ذاكرة المتصفح (IndexedDB)...', 'IndexedDB');
     const idsToSearchDB = [fileId, itemId].filter(Boolean);
     for (const searchId of idsToSearchDB) {
         try {
             const fileData = await getFile(searchId);
             if (fileData && fileData.data) {
+                if (typeof onProgress === 'function') onProgress(90, 'تم استخراج الملف بنجاح...', 'IndexedDB');
                 return new Blob([fileData.data], { type: 'application/pdf' });
             }
         } catch (dbErr) {
             console.warn('IndexedDB file fetch notice:', dbErr);
+        }
+    }
+    
+    // 3. Priority: Google Drive Cloud Sync API
+    const cloudUrl = getCloudApiUrl();
+    if (cloudUrl) {
+        try {
+            if (typeof onProgress === 'function') onProgress(50, 'الاتصال بسحابة Google Drive...', 'Google Drive');
+            const queryParams = new URLSearchParams({
+                action: 'getFile',
+                format: 'base64',
+                fileId: fileId || '',
+                fileName: rawFileName || '',
+                itemId: itemId || '',
+                itemName: itemName || ''
+            });
+            const fetchUrl = cloudUrl + (cloudUrl.includes('?') ? '&' : '?') + queryParams.toString();
+            const resp = await fetch(fetchUrl);
+            if (resp.ok) {
+                if (typeof onProgress === 'function') onProgress(75, 'جاري استلام وفك تشفير الملف السحابي...', 'Google Drive');
+                const jsonRes = await resp.json();
+                if (jsonRes && jsonRes.status === 'ok') {
+                    if (jsonRes.base64) {
+                        const byteChars = atob(jsonRes.base64);
+                        const byteNums = new Array(byteChars.length);
+                        for (let i = 0; i < byteChars.length; i++) {
+                            byteNums[i] = byteChars.charCodeAt(i);
+                        }
+                        const byteArray = new Uint8Array(byteNums);
+                        const cloudBlob = new Blob([byteArray], { type: 'application/pdf' });
+                        
+                        // Auto-cache in IndexedDB for instant offline access
+                        try {
+                            const targetKey = fileId || itemId;
+                            if (targetKey && db) {
+                                const trans = db.transaction(FILES_STORE, 'readwrite');
+                                trans.objectStore(FILES_STORE).put({
+                                    id: targetKey,
+                                    name: rawFileName || itemName || 'document.pdf',
+                                    type: 'application/pdf',
+                                    data: byteArray.buffer
+                                });
+                            }
+                        } catch (cacheErr) {}
+                        
+                        if (typeof onProgress === 'function') onProgress(95, 'تم استلام الملف بنجاح...', 'Google Drive');
+                        return cloudBlob;
+                    } else if (jsonRes.downloadUrl) {
+                        if (typeof onProgress === 'function') onProgress(95, 'تم استلام الرابط السحابي المباشر...', 'Google Drive');
+                        return {
+                            isCloudUrl: true,
+                            url: jsonRes.downloadUrl,
+                            fileName: jsonRes.fileName || rawFileName || itemName || 'document.pdf',
+                            previewUrl: jsonRes.previewUrl,
+                            size: jsonRes.size
+                        };
+                    }
+                }
+            }
+        } catch (cloudFetchErr) {
+            console.warn('Cloud PDF fetch notice:', cloudFetchErr);
         }
     }
     
@@ -558,6 +848,50 @@ async function renderPdfPreviewFromDB(item, containerId) {
     }
 }
 
+// Recursively find data.json or data.xml in directory handle or any subdirectories
+async function findDataFileInDirectoryHandle(dirHandle, maxDepth = 4, currentDepth = 0) {
+    if (!dirHandle || currentDepth > maxDepth) return null;
+    
+    // 1. Direct check in current folder for data.json
+    try {
+        const jsonHandle = await dirHandle.getFileHandle('data.json');
+        const file = await jsonHandle.getFile();
+        const text = await file.text();
+        const data = JSON.parse(text);
+        if (data && (Array.isArray(data.materials) || Array.isArray(data.books))) {
+            return { type: 'json', data: data, handle: jsonHandle, dirHandle: dirHandle };
+        }
+    } catch (e) {}
+    
+    // 2. Direct check in current folder for data.xml
+    try {
+        const xmlHandle = await dirHandle.getFileHandle('data.xml');
+        const file = await xmlHandle.getFile();
+        const text = await file.text();
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(text, 'text/xml');
+        return { type: 'xml', xmlDoc: xmlDoc, handle: xmlHandle, dirHandle: dirHandle };
+    } catch (e) {}
+    
+    // 3. Scan subdirectories
+    try {
+        if (typeof dirHandle.values === 'function' || typeof dirHandle.entries === 'function') {
+            const iterator = dirHandle.values ? dirHandle.values() : dirHandle.entries();
+            for await (const entry of iterator) {
+                const handle = Array.isArray(entry) ? entry[1] : entry;
+                if (handle && handle.kind === 'directory') {
+                    const subRes = await findDataFileInDirectoryHandle(handle, maxDepth, currentDepth + 1);
+                    if (subRes) return subRes;
+                }
+            }
+        }
+    } catch (err) {
+        console.warn('Subdir scan warning:', err);
+    }
+    
+    return null;
+}
+
 // Link local data directory from Home Page
 async function linkLocalDataDirectory() {
     try {
@@ -567,30 +901,46 @@ async function linkLocalDataDirectory() {
                 mode: 'read'
             });
             
+            const foundData = await findDataFileInDirectoryHandle(dirHandle);
             let jsonData = null;
             let xmlDoc = null;
             
-            // 1. Try reading data.json
-            try {
-                const jsonHandle = await dirHandle.getFileHandle('data.json');
-                const jsonFile = await jsonHandle.getFile();
-                const jsonText = await jsonFile.text();
-                jsonData = JSON.parse(jsonText);
-            } catch (e) {
-                // 2. Fallback: try data.xml
-                try {
-                    const xmlHandle = await dirHandle.getFileHandle('data.xml');
-                    const xmlFile = await xmlHandle.getFile();
-                    const xmlText = await xmlFile.text();
-                    const parser = new DOMParser();
-                    xmlDoc = parser.parseFromString(xmlText, 'text/xml');
-                } catch (err) {
-                    alert('لم يتم العثور على ملف data.json أو data.xml داخل المجلد المختار.\nيرجى التأكد من استخراج ملفات النسخة الاحتياطية واختيار المجلد الصحيح.');
+            if (foundData) {
+                if (foundData.type === 'json') jsonData = foundData.data;
+                if (foundData.type === 'xml') xmlDoc = foundData.xmlDoc;
+            } else {
+                // Auto-discover PDF files if no data.json or data.xml exists!
+                const pdfHandles = await collectAllPdfsFromDirectory(dirHandle);
+                if (pdfHandles.length > 0) {
+                    jsonData = {
+                        materials: pdfHandles.map(h => {
+                            const name = h.name.replace(/\.pdf$/i, '');
+                            const cleanName = name.replace(/^\d+[\s_\-]+/, '');
+                            const idMatch = h.name.match(/^\d+/);
+                            const id = idMatch ? idMatch[0] : Date.now().toString() + Math.floor(Math.random() * 1000);
+                            return {
+                                id: id,
+                                name: cleanName || name,
+                                school: '',
+                                teacher: '',
+                                grade: 'أخرى',
+                                sides: 'وجه واحد',
+                                price: '25',
+                                fileName: h.name,
+                                fileId: id,
+                                thumbnail: null,
+                                dateAdded: new Date().toISOString()
+                            };
+                        }),
+                        books: []
+                    };
+                } else {
+                    alert('لم يتم العثور على ملفات PDF أو ملف data.json داخل المجلد المختار.\nيرجى التأكد من اختيار مجلد المواد والكتب الصحيح.');
                     return;
                 }
             }
             
-            // Clear metadata stores (keep files store empty to save memory!)
+            // Clear metadata stores (keep files store clean to save memory!)
             const transMat = db.transaction(MATERIALS_STORE, 'readwrite');
             transMat.objectStore(MATERIALS_STORE).clear();
             const transBook = db.transaction(BOOKS_STORE, 'readwrite');
@@ -603,16 +953,19 @@ async function linkLocalDataDirectory() {
             const transSave = db.transaction(FILES_STORE, 'readwrite');
             transSave.objectStore(FILES_STORE).put({ id: '__linked_dir_handle__', handle: dirHandle, name: dirHandle.name });
             
-            // Import Metadata
+            // Import Metadata using updateItem (safe from ConstraintErrors)
+            let importedCount = 0;
             if (jsonData) {
                 if (Array.isArray(jsonData.materials)) {
                     for (const m of jsonData.materials) {
                         await updateItem(MATERIALS_STORE, m);
+                        importedCount++;
                     }
                 }
                 if (Array.isArray(jsonData.books)) {
                     for (const b of jsonData.books) {
                         await updateItem(BOOKS_STORE, b);
+                        importedCount++;
                     }
                 }
             } else if (xmlDoc) {
@@ -637,6 +990,7 @@ async function linkLocalDataDirectory() {
                         dateAdded: new Date().toISOString()
                     };
                     await updateItem(MATERIALS_STORE, material);
+                    importedCount++;
                 }
                 
                 const bookNodes = xmlDoc.querySelectorAll('books > book');
@@ -657,11 +1011,13 @@ async function linkLocalDataDirectory() {
                         dateAdded: new Date().toISOString()
                     };
                     await updateItem(BOOKS_STORE, book);
+                    importedCount++;
                 }
             }
             
             await loadEducationalData();
             await updateHomeStorageButton();
+            alert(`✅ تم ربط المجلد بنجاح واستيراد ${importedCount} مادة وكتاب!`);
         } else {
             // Fallback for non-Chromium browsers (Firefox / Safari / HTTP)
             const input = document.createElement('input');
@@ -800,13 +1156,35 @@ async function openPreviewModal(fileId, title, badgeText, fileName) {
     modal.classList.add('active');
     
     modalDownloadBtn.onclick = () => {
-        downloadFile(fileId, fileName || (title + '.pdf'));
+        downloadFile(fileId, fileName || (title + '.pdf'), title);
     };
     
     if (fileId || fileName) {
         try {
-            const blob = await getPDFBlob(fileId, fileName, true);
+            const blob = await getPDFBlob(fileId, fileName, true, null, title);
             if (blob) {
+                if (blob.isCloudUrl) {
+                    let directDownloadUrl = blob.url;
+                    if (directDownloadUrl && (directDownloadUrl.includes('drive.google.com') || directDownloadUrl.includes('drive.usercontent.google.com'))) {
+                        const idMatch = directDownloadUrl.match(/[?&]id=([a-zA-Z0-9_\-]+)/);
+                        if (idMatch) {
+                            directDownloadUrl = `https://drive.usercontent.google.com/download?id=${idMatch[1]}&export=download&authuser=0&confirm=t`;
+                        }
+                    }
+                    modalCanvasContainer.innerHTML = `
+                        <div style="text-align:center; padding: 2rem 1rem;">
+                            <div style="font-size:3rem; margin-bottom:1rem;">☁️</div>
+                            <h4 style="color:var(--text-primary); margin-bottom:0.5rem;">الملف متوفر على Google Drive</h4>
+                            <p style="color:var(--text-secondary); font-size:0.9rem; margin-bottom:1.5rem;">يمكنك تحميل الملف فوراً أو معاينته مباشرة عبر درايف</p>
+                            <div style="display:flex; gap:0.75rem; justify-content:center; flex-wrap:wrap;">
+                                ${blob.previewUrl ? `<a href="${blob.previewUrl}" target="_blank" class="nav-btn nav-btn-outline" style="text-decoration:none;">👁️ معاينة في Google Drive</a>` : ''}
+                                <a href="${directDownloadUrl}" target="_blank" class="nav-btn nav-btn-primary" style="text-decoration:none;">📥 تحميل الملف فوراً</a>
+                            </div>
+                        </div>
+                    `;
+                    return;
+                }
+                
                 const url = URL.createObjectURL(blob);
                 
                 pdfjsLib.getDocument(url).promise.then(pdf => pdf.getPage(1)).then(page => {
@@ -830,7 +1208,7 @@ async function openPreviewModal(fileId, title, badgeText, fileName) {
                     URL.revokeObjectURL(url);
                 });
             } else {
-                modalCanvasContainer.innerHTML = '<p style="color:var(--text-muted)">الملف غير متوفر حالياً. يرجى التأكد من ربط مجلد البيانات المحلي.</p>';
+                modalCanvasContainer.innerHTML = '<p style="color:var(--text-muted)">الملف غير متوفر حالياً. يرجى التأكد من ربط مجلد البيانات المحلي أو سحابة Google Drive.</p>';
             }
         } catch (e) {
             modalCanvasContainer.innerHTML = '<p style="color:var(--text-muted)">حدث خطأ أثناء تحميل المعاينة</p>';
@@ -850,38 +1228,73 @@ function closePreviewModal(e) {
 
 // Download a file
 async function downloadFile(fileId, fileName, itemName = null, itemId = null) {
+    const displayName = itemName || fileName || 'الملف التعليمي';
+    showDownloadProgress(displayName, 15, 'جاري البحث وتجهيز الملف...', 'بدء التحميل');
+    
     try {
-        let blob = await getPDFBlob(fileId, fileName, true, itemId, itemName);
+        let blob = await getPDFBlob(fileId, fileName, true, itemId, itemName, (pct, sub, source) => {
+            updateDownloadProgress(pct, sub, source);
+        });
         
         // If not found and showDirectoryPicker is supported, prompt to re-link folder
         if (!blob && window.showDirectoryPicker) {
+            hideDownloadProgress();
             const shouldReselect = confirm(
-                'ملف الـ PDF غير متوفر في المسار الحالي.\n\n' +
+                'ملف الـ PDF غير متوفر في المسار الحالي (' + displayName + ').\n\n' +
                 'هل ترغب في تحديد / إعادة اختيار مجلد المواد والكتب على جهازك للوصول إلى الملفات فوراً؟'
             );
             if (shouldReselect) {
                 await linkLocalDataDirectory();
-                blob = await getPDFBlob(fileId, fileName, true, itemId, itemName);
+                showDownloadProgress(displayName, 30, 'إعادة البحث في المجلد الجديد...', 'مجلد محلي');
+                blob = await getPDFBlob(fileId, fileName, true, itemId, itemName, (pct, sub, source) => {
+                    updateDownloadProgress(pct, sub, source);
+                });
             }
         }
         
         if (!blob) {
-            alert('عذراً، ملف الـ PDF غير متوفر (' + (fileName || itemName || 'الملف') + ').\nيرجى النقر على زر "مجلد محلي" في الأعلى والتأكد من اختيار المجلد الذي يحتوي على الملفات.');
+            hideDownloadProgress();
+            alert('عذراً، ملف الـ PDF غير متوفر (' + (fileName || itemName || 'الملف') + ').\nيرجى النقر على زر "مجلد محلي" في الأعلى والتأكد من اختيار المجلد الذي يحتوي على الملفات، أو التحقق من المزامنة السحابية.');
             return;
         }
+        
+        // Handle Google Drive direct cloud URL (large files / high-speed download)
+        if (blob && blob.isCloudUrl) {
+            finishDownloadProgress('✅ تم تجهيز الرابط السحابي، يبدأ التنزيل المباشر الآن...');
+            let targetUrl = blob.url;
+            if (targetUrl && (targetUrl.includes('drive.google.com') || targetUrl.includes('drive.usercontent.google.com'))) {
+                const idMatch = targetUrl.match(/[?&]id=([a-zA-Z0-9_\-]+)/);
+                if (idMatch) {
+                    targetUrl = `https://drive.usercontent.google.com/download?id=${idMatch[1]}&export=download&authuser=0&confirm=t`;
+                }
+            }
+            const a = document.createElement('a');
+            a.href = targetUrl;
+            a.target = '_blank';
+            a.download = fileName || (displayName + '.pdf');
+            document.body.appendChild(a);
+            a.click();
+            setTimeout(() => {
+                document.body.removeChild(a);
+            }, 500);
+            return;
+        }
+        
+        finishDownloadProgress('✅ تم تجهيز الملف، يبدأ التنزيل الآن...');
         
         const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
         a.href = url;
-        a.download = fileName || 'download.pdf';
+        a.download = fileName || (displayName + '.pdf');
         document.body.appendChild(a);
         a.click();
         
         setTimeout(() => {
             document.body.removeChild(a);
             URL.revokeObjectURL(url);
-        }, 200);
+        }, 300);
     } catch (error) {
+        hideDownloadProgress();
         console.error('Error downloading file:', error);
         alert('حدث خطأ أثناء تحميل الملف: ' + error.message);
     }
@@ -1286,8 +1699,23 @@ async function loadEducationalData() {
     try {
         await initDB();
         
-        const materials = (await getAllItems(MATERIALS_STORE)) || [];
-        const books = (await getAllItems(BOOKS_STORE)) || [];
+        let materials = (await getAllItems(MATERIALS_STORE)) || [];
+        let books = (await getAllItems(BOOKS_STORE)) || [];
+        
+        // If DB is completely empty, auto-populate from default dataset
+        if (materials.length === 0 && books.length === 0) {
+            if (window.DEFAULT_EDUCATIONAL_DATA) {
+                const defData = window.DEFAULT_EDUCATIONAL_DATA;
+                if (Array.isArray(defData.materials)) {
+                    for (const m of defData.materials) await updateItem(MATERIALS_STORE, m);
+                }
+                if (Array.isArray(defData.books)) {
+                    for (const b of defData.books) await updateItem(BOOKS_STORE, b);
+                }
+                materials = (await getAllItems(MATERIALS_STORE)) || [];
+                books = (await getAllItems(BOOKS_STORE)) || [];
+            }
+        }
         
         allItems = [
             ...materials.map(m => ({ ...m, type: 'material' })),
@@ -1297,6 +1725,38 @@ async function loadEducationalData() {
         updateBadgeCounters();
         applyFilterAndRender();
         await updateHomeStorageButton();
+        
+        // Background Cloud Sync Check
+        const cloudUrl = getCloudApiUrl();
+        if (cloudUrl) {
+            fetch(cloudUrl + (cloudUrl.includes('?') ? '&' : '?') + 'action=getData&t=' + Date.now())
+                .then(res => res.json())
+                .then(async cloudData => {
+                    if (cloudData && (Array.isArray(cloudData.materials) || Array.isArray(cloudData.books))) {
+                        const newMaterials = cloudData.materials || [];
+                        const newBooks = cloudData.books || [];
+                        
+                        // Check if cloud data is newer or has items
+                        if (newMaterials.length > 0 || newBooks.length > 0) {
+                            const transMat = db.transaction(MATERIALS_STORE, 'readwrite');
+                            transMat.objectStore(MATERIALS_STORE).clear();
+                            const transBook = db.transaction(BOOKS_STORE, 'readwrite');
+                            transBook.objectStore(BOOKS_STORE).clear();
+                            
+                            for (const m of newMaterials) await updateItem(MATERIALS_STORE, m);
+                            for (const b of newBooks) await updateItem(BOOKS_STORE, b);
+                            
+                            allItems = [
+                                ...newMaterials.map(m => ({ ...m, type: 'material' })),
+                                ...newBooks.map(b => ({ ...b, type: 'book' }))
+                            ];
+                            updateBadgeCounters();
+                            applyFilterAndRender();
+                        }
+                    }
+                })
+                .catch(cloudErr => console.warn('Background cloud sync notice:', cloudErr));
+        }
     } catch (error) {
         console.warn('Data load notice / fallback:', error);
         allItems = [];

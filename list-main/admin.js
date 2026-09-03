@@ -51,12 +51,26 @@ async function loadSavedItems() {
     try {
         await initDB();
         
-        // Load materials
-        currentAdminMaterials = await getAllItems(MATERIALS_STORE);
-        displayItems('material', currentAdminMaterials);
+        // Load materials & books
+        currentAdminMaterials = (await getAllItems(MATERIALS_STORE)) || [];
+        currentAdminBooks = (await getAllItems(BOOKS_STORE)) || [];
         
-        // Load books
-        currentAdminBooks = await getAllItems(BOOKS_STORE);
+        // If DB is completely empty, auto-populate from default data or linked storage
+        if (currentAdminMaterials.length === 0 && currentAdminBooks.length === 0) {
+            if (window.DEFAULT_EDUCATIONAL_DATA) {
+                const defData = window.DEFAULT_EDUCATIONAL_DATA;
+                if (Array.isArray(defData.materials)) {
+                    for (const m of defData.materials) await updateItem(MATERIALS_STORE, m);
+                }
+                if (Array.isArray(defData.books)) {
+                    for (const b of defData.books) await updateItem(BOOKS_STORE, b);
+                }
+                currentAdminMaterials = (await getAllItems(MATERIALS_STORE)) || [];
+                currentAdminBooks = (await getAllItems(BOOKS_STORE)) || [];
+            }
+        }
+        
+        displayItems('material', currentAdminMaterials);
         displayItems('book', currentAdminBooks);
         
         // Update stats
@@ -1084,6 +1098,294 @@ async function getStoredDirectoryHandle() {
     }
 }
 
+// --- Google Drive Cloud Sync Management ---
+function getCloudApiUrl() {
+    return (localStorage.getItem('gdrive_api_url') || '').trim();
+}
+
+function setCloudApiUrl(url) {
+    if (url && url.trim() !== '') {
+        localStorage.setItem('gdrive_api_url', url.trim());
+    } else {
+        localStorage.removeItem('gdrive_api_url');
+    }
+}
+
+// Update UI badges and inputs for Google Drive
+async function updateCloudUiStatus() {
+    const cloudUrl = getCloudApiUrl();
+    const input = document.getElementById('gdriveApiUrlInput');
+    const badge = document.getElementById('cloudConnectionBadge');
+    const desc = document.getElementById('cloudSyncStatusDesc');
+    const storageBadge = document.getElementById('storageStatusText');
+    
+    if (input && !input.value) {
+        input.value = cloudUrl;
+    }
+    
+    if (cloudUrl) {
+        if (badge) {
+            badge.textContent = '✅ متصل بسحابة Google Drive';
+            badge.style.background = 'var(--success-light)';
+            badge.style.color = 'var(--success)';
+            badge.style.borderColor = 'rgba(16, 185, 129, 0.3)';
+        }
+        if (desc) {
+            desc.innerHTML = `<span style="color:var(--success); font-weight:700;">✅ متصل بسحابة Google Drive:</span> المزامنة مفعلة لجميع الأجهزة تلقائياً.`;
+        }
+        if (storageBadge && !linkedDirectoryHandle) {
+            storageBadge.textContent = '☁️ Google Drive (سحابي)';
+            storageBadge.style.color = 'var(--primary)';
+        }
+    } else {
+        if (badge) {
+            badge.textContent = 'غير متصل';
+            badge.style.background = 'var(--bg-alt)';
+            badge.style.color = 'var(--text-secondary)';
+            badge.style.borderColor = 'var(--border-color)';
+        }
+        if (desc) {
+            desc.textContent = 'اربط رابط تطبيق الويب (Google Apps Script) لتصل إلى مذكراتك وكتبك من أي جهاز (جوال، كمبيوتر، تابلت) مباشرة وبدون نقل ملفات.';
+        }
+    }
+}
+
+// Test and save Cloud API URL from admin panel
+async function testAndSaveCloudApiUrl() {
+    const input = document.getElementById('gdriveApiUrlInput');
+    const url = (input ? input.value : '').trim();
+    
+    if (!url) {
+        showNotification('الرجاء إدخال رابط Google Apps Script');
+        return;
+    }
+    
+    showLoading('جاري فحص الاتصال بسحابة Google Drive...');
+    
+    try {
+        const pingUrl = url + (url.includes('?') ? '&' : '?') + 'action=ping&t=' + Date.now();
+        const resp = await fetch(pingUrl);
+        const data = await resp.json();
+        
+        if (data && data.status === 'ok') {
+            setCloudApiUrl(url);
+            await updateCloudUiStatus();
+            hideLoading();
+            showNotification(`✅ تم الاتصال بنجاح بمجلد Google Drive (${data.folderName || 'Educational_Materials_Storage'})`);
+        } else {
+            throw new Error((data && data.message) || 'استجابة غير صالحة');
+        }
+    } catch (err) {
+        hideLoading();
+        alert('تعذر الاتصال بـ Google Drive:\n' + err.message + '\n\nتأكد من نشر السكربت كـ Web App بصلاحية "Anyone" (أي مستخدم).');
+    }
+}
+
+// Disconnect Cloud API
+async function disconnectCloudApi() {
+    if (!confirm('هل تريد إلغاء ربط سحابة Google Drive؟')) return;
+    setCloudApiUrl('');
+    const input = document.getElementById('gdriveApiUrlInput');
+    if (input) input.value = '';
+    await updateCloudUiStatus();
+    await updateStorageStatusBadge();
+    showNotification('تم فصل الربط السحابي');
+}
+
+// Clean and initialize remote Google Drive folder
+async function cleanRemoteCloudFolder() {
+    const cloudUrl = getCloudApiUrl();
+    if (!cloudUrl) {
+        alert('يرجى حفظ رابط السحابة أولاً قبل التنظيف.');
+        return;
+    }
+    
+    if (!confirm('⚠️ تحذير: هل أنت متأكد من رغبتك في حذف وإفراغ المجلد السحابي القديم في Google Drive لإعادة تهيئته؟')) {
+        return;
+    }
+    
+    showLoading('جاري تنظيف وإعادة تهيئة مجلد Google Drive...');
+    try {
+        const cleanUrl = cloudUrl + (cloudUrl.includes('?') ? '&' : '?') + 'action=cleanFolder&t=' + Date.now();
+        const resp = await fetch(cleanUrl);
+        const data = await resp.json();
+        
+        hideLoading();
+        if (data && data.status === 'ok') {
+            showNotification(data.message || 'تم تنظيف مجلد Google Drive بنجاح');
+        } else {
+            alert('حدث خطأ أثناء التنظيف: ' + ((data && data.message) || 'خطأ غير معروف'));
+        }
+    } catch (err) {
+        hideLoading();
+        alert('خطأ في الاتصال: ' + err.message);
+    }
+}
+
+// Auto sync data.json to Cloud
+async function syncDataJsonToCloud() {
+    const cloudUrl = getCloudApiUrl();
+    if (!cloudUrl) return;
+    
+    try {
+        const materials = await getAllItems(MATERIALS_STORE);
+        const books = await getAllItems(BOOKS_STORE);
+        const exportObj = {
+            exportDate: new Date().toISOString(),
+            version: '2.0',
+            materials: materials,
+            books: books
+        };
+        
+        await fetch(cloudUrl, {
+            method: 'POST',
+            mode: 'no-cors',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                action: 'saveData',
+                data: exportObj
+            })
+        });
+    } catch (e) {
+        console.warn('Background sync to Google Drive notice:', e);
+    }
+}
+
+// Upload all local materials, books, and PDF files to Google Drive with progressive progress bar
+async function pushAllDataAndFilesToCloud() {
+    const cloudUrl = getCloudApiUrl();
+    if (!cloudUrl) {
+        alert('الرجاء إدخال وحفظ رابط Google Apps Script أولاً.');
+        return;
+    }
+    
+    const materials = await getAllItems(MATERIALS_STORE);
+    const books = await getAllItems(BOOKS_STORE);
+    const totalItems = materials.length + books.length;
+    
+    if (totalItems === 0) {
+        alert('لا توجد مذكرات أو كتب لرفعها.');
+        return;
+    }
+    
+    if (!confirm(`هل تريد رفع ومزامنة كامل البيانات (${totalItems} مادة وملف) إلى Google Drive الآن؟`)) {
+        return;
+    }
+    
+    const progressWrap = document.getElementById('cloudUploadProgressWrap');
+    const progressBar = document.getElementById('cloudProgressBar');
+    const statusText = document.getElementById('cloudUploadStatusText');
+    const percentText = document.getElementById('cloudUploadPercentText');
+    const btnPush = document.getElementById('btnPushAllToCloud');
+    
+    if (progressWrap) progressWrap.style.display = 'block';
+    if (btnPush) btnPush.disabled = true;
+    
+    try {
+        if (statusText) statusText.textContent = 'جاري رفع وتحديث ملف البيانات data.json...';
+        if (progressBar) progressBar.style.width = '10%';
+        if (percentText) percentText.textContent = '10%';
+        
+        const exportObj = {
+            exportDate: new Date().toISOString(),
+            version: '2.0',
+            materials: materials,
+            books: books
+        };
+        
+        try {
+            await fetch(cloudUrl, {
+                method: 'POST',
+                mode: 'no-cors',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'saveData', data: exportObj })
+            });
+        } catch (e) {}
+        
+        const allList = [
+            ...materials.map(m => ({ ...m, itemType: 'material' })),
+            ...books.map(b => ({ ...b, itemType: 'book' }))
+        ];
+        
+        let completed = 0;
+        for (let i = 0; i < allList.length; i++) {
+            const item = allList[i];
+            const percent = Math.round(10 + ((i / allList.length) * 85));
+            
+            if (statusText) statusText.textContent = `[${i + 1}/${allList.length}] جاري رفع ملف: ${item.name}...`;
+            if (progressBar) progressBar.style.width = `${percent}%`;
+            if (percentText) percentText.textContent = `${percent}%`;
+            
+            const pdfBlob = await getPDFBlob(item.fileId, item.fileName, true, item.id, item.name);
+            if (pdfBlob) {
+                const targetFileName = `${item.id}_${item.fileName || (item.itemType === 'material' ? 'material.pdf' : 'book.pdf')}`;
+                const arrayBuffer = await pdfBlob.arrayBuffer();
+                
+                let binary = '';
+                const bytes = new Uint8Array(arrayBuffer);
+                const len = bytes.byteLength;
+                for (let b = 0; b < len; b++) {
+                    binary += String.fromCharCode(bytes[b]);
+                }
+                const base64Data = btoa(binary);
+                
+                try {
+                    await fetch(cloudUrl, {
+                        method: 'POST',
+                        mode: 'no-cors',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            action: 'uploadPdf',
+                            fileName: targetFileName,
+                            base64: base64Data
+                        })
+                    });
+                    completed++;
+                } catch (uploadErr) {
+                    console.warn(`Error uploading ${targetFileName}:`, uploadErr);
+                }
+            }
+        }
+        
+        if (progressBar) progressBar.style.width = '100%';
+        if (percentText) percentText.textContent = '100%';
+        if (statusText) statusText.textContent = '✅ اكتملت المزامنة والرفع السحابي بنجاح!';
+        
+        showNotification(`تم رفع ومزامنة ${completed} ملف إلى Google Drive بنجاح!`);
+    } catch (error) {
+        console.error('Error during cloud push:', error);
+        alert('حدث خطأ أثناء الرفع السحابي: ' + error.message);
+    } finally {
+        if (btnPush) btnPush.disabled = false;
+        setTimeout(() => {
+            if (progressWrap) progressWrap.style.display = 'none';
+        }, 5000);
+    }
+}
+
+// Sync data.json to linked local directory
+async function syncDataJsonToLinkedDirectory() {
+    if (linkedDirectoryHandle) {
+        try {
+            const materials = await getAllItems(MATERIALS_STORE);
+            const books = await getAllItems(BOOKS_STORE);
+            const exportObj = {
+                exportDate: new Date().toISOString(),
+                version: '2.0',
+                materials: materials,
+                books: books
+            };
+            const jsonHandle = await linkedDirectoryHandle.getFileHandle('data.json', { create: true });
+            const jsonWritable = await jsonHandle.createWritable();
+            await jsonWritable.write(JSON.stringify(exportObj, null, 2));
+            await jsonWritable.close();
+        } catch (e) {
+            console.warn('Auto-sync data.json to directory warning:', e);
+        }
+    }
+    await syncDataJsonToCloud();
+}
+
 // Update the storage status badge and description
 async function updateStorageStatusBadge() {
     if (!linkedDirectoryHandle) {
@@ -1113,6 +1415,7 @@ async function updateStorageStatusBadge() {
         }
         if (btnDisconnect) btnDisconnect.style.display = 'none';
     }
+    await updateCloudUiStatus();
 }
 
 // Disconnect local folder and switch back to standard IndexedDB mode
@@ -1132,112 +1435,134 @@ async function disconnectLocalFolder() {
     }
 }
 
-// Helper: Deep and robust search for PDF file inside directory handle and subfolders
+// Collect all PDF file handles recursively from directory and subdirectories
+async function collectAllPdfsFromDirectory(dirHandle, maxDepth = 4, currentDepth = 0) {
+    const results = [];
+    if (!dirHandle || currentDepth > maxDepth) return results;
+    
+    try {
+        if (typeof dirHandle.values === 'function' || typeof dirHandle.entries === 'function') {
+            const iterator = dirHandle.values ? dirHandle.values() : dirHandle.entries();
+            for await (const entry of iterator) {
+                const handle = Array.isArray(entry) ? entry[1] : entry;
+                if (!handle) continue;
+                if (handle.kind === 'file') {
+                    if (handle.name && (handle.name.toLowerCase().endsWith('.pdf') || handle.name.toLowerCase().includes('.pdf'))) {
+                        results.push(handle);
+                    }
+                } else if (handle.kind === 'directory') {
+                    const subResults = await collectAllPdfsFromDirectory(handle, maxDepth, currentDepth + 1);
+                    results.push(...subResults);
+                }
+            }
+        }
+    } catch (err) {
+        console.warn('Directory scan notice at depth', currentDepth, err);
+    }
+    return results;
+}
+
+// Helper: Deep and robust search for PDF file inside directory handle and all subdirectories
 async function findFileInDirectoryHandle(rootDirHandle, fileId, rawFileName, itemId = null, itemName = null) {
     if (!rootDirHandle) return null;
     
     const idsToTry = [fileId, itemId].filter(Boolean).map(x => x.toString().trim());
     const namesToTry = [rawFileName, itemName].filter(Boolean).map(x => x.toString().trim());
     
-    // Normalization helper for Arabic, punctuation, and case differences
     const norm = (str) => (str || '')
         .normalize('NFC')
         .toLowerCase()
-        .replace(/[\s_\-\.\(\)]+/g, '');
+        .replace(/[\s_\-\.\(\)\[\]]+/g, '');
         
-    const targetNorms = namesToTry.map(n => norm(n.replace(/\.pdf$/i, ''))).filter(Boolean);
+    const tokenize = (str) => (str || '')
+        .toLowerCase()
+        .replace(/\.pdf$/i, '')
+        .split(/[\s_\-\.\(\)\[\]]+/)
+        .filter(x => x && x.length > 1);
+        
+    const itemTokens = [];
+    namesToTry.forEach(n => itemTokens.push(...tokenize(n)));
     
-    // Collect all directories to search: root directory + common subdirectories
-    const dirsToSearch = [rootDirHandle];
-    const subDirNames = ['sample-pdfs', 'sample_pdfs', 'pdfs', 'PDFs', 'files', 'materials', 'books'];
+    // 1. Collect all PDF file handles across all subdirectories recursively
+    const allPdfHandles = await collectAllPdfsFromDirectory(rootDirHandle);
+    if (allPdfHandles.length === 0) return null;
     
-    for (const subName of subDirNames) {
-        try {
-            const subHandle = await rootDirHandle.getDirectoryHandle(subName);
-            if (subHandle) dirsToSearch.push(subHandle);
-        } catch (e) {
-            // Subdir doesn't exist
-        }
-    }
-    
-    // 1. Fast Pass: Direct exact candidates on all candidate directories
+    // 2. Exact candidate matching
     const candidateNames = [];
     for (const cleanId of idsToTry) {
         for (const cleanName of namesToTry) {
-            const cleanNameNoExt = cleanName.replace(/\.pdf$/i, '');
+            const cleanNoExt = cleanName.replace(/\.pdf$/i, '');
             candidateNames.push(`${cleanId}_${cleanName}`);
-            candidateNames.push(`${cleanId}_${cleanNameNoExt}.pdf`);
-            candidateNames.push(`${cleanId}-${cleanNameNoExt}.pdf`);
+            candidateNames.push(`${cleanId}_${cleanNoExt}.pdf`);
+            candidateNames.push(`${cleanId}-${cleanNoExt}.pdf`);
+            candidateNames.push(`${cleanId}-${cleanName}`);
         }
         candidateNames.push(`${cleanId}.pdf`);
     }
     for (const cleanName of namesToTry) {
-        const cleanNameNoExt = cleanName.replace(/\.pdf$/i, '');
+        const cleanNoExt = cleanName.replace(/\.pdf$/i, '');
         candidateNames.push(cleanName);
-        candidateNames.push(`${cleanNameNoExt}.pdf`);
+        candidateNames.push(`${cleanNoExt}.pdf`);
     }
     
-    for (const dir of dirsToSearch) {
-        for (const candidate of candidateNames) {
+    for (const handle of allPdfHandles) {
+        if (candidateNames.includes(handle.name)) {
             try {
-                const fileHandle = await dir.getFileHandle(candidate);
-                const file = await fileHandle.getFile();
+                const file = await handle.getFile();
                 if (file && file.size > 0) return file;
-            } catch (e) {
-                // Try next
+            } catch (e) {}
+        }
+    }
+    
+    // 3. Match by ID prefix (e.g. 1787670050911_... or 1787670050911-...)
+    for (const cleanId of idsToTry) {
+        if (!cleanId) continue;
+        for (const handle of allPdfHandles) {
+            if (handle.name.startsWith(cleanId)) {
+                try {
+                    const file = await handle.getFile();
+                    if (file && file.size > 0) return file;
+                } catch (e) {}
             }
         }
     }
     
-    // 2. Deep Pass: Iterate directory entries with fuzzy and normalized Arabic matching
-    for (const dir of dirsToSearch) {
-        try {
-            if (typeof dir.entries === 'function' || typeof dir.values === 'function') {
-                const iterator = dir.entries ? dir.entries() : dir.values();
-                for await (const entry of iterator) {
-                    const handle = Array.isArray(entry) ? entry[1] : entry;
-                    const name = Array.isArray(entry) ? entry[0] : handle.name;
-                    
-                    if (!handle || handle.kind !== 'file') continue;
-                    if (!name.toLowerCase().endsWith('.pdf') && !name.toLowerCase().includes('.pdf')) continue;
-                    
-                    const entryName = name;
-                    const entryNorm = norm(entryName.replace(/\.pdf$/i, ''));
-                    
-                    // Match by file ID or item ID prefix (e.g., 1788251448243_...)
-                    for (const cleanId of idsToTry) {
-                        if (cleanId && entryName.startsWith(cleanId)) {
-                            try {
-                                const file = await handle.getFile();
-                                if (file && file.size > 0) return file;
-                            } catch (e) {}
-                        }
-                    }
-                    
-                    // Match by normalized text inclusion
-                    for (const targetNorm of targetNorms) {
-                        if (targetNorm && (entryNorm.includes(targetNorm) || targetNorm.includes(entryNorm))) {
-                            try {
-                                const file = await handle.getFile();
-                                if (file && file.size > 0) return file;
-                            } catch (e) {}
-                        }
-                    }
-                    
-                    // Match after stripping leading numeric IDs (e.g., 1709123456_name.pdf -> name.pdf)
-                    const nameWithoutPrefix = entryName.replace(/^\d+[\s_\-]+/, '');
-                    for (const cleanName of namesToTry) {
-                        if (cleanName && norm(nameWithoutPrefix) === norm(cleanName)) {
-                            try {
-                                const file = await handle.getFile();
-                                if (file && file.size > 0) return file;
-                            } catch (e) {}
-                        }
-                    }
-                }
+    // 4. Token-based overlap matching (resilient against hyphens, spaces, rasterized prefixes)
+    let bestHandle = null;
+    let bestScore = 0;
+    
+    for (const handle of allPdfHandles) {
+        const fileTokens = tokenize(handle.name);
+        let score = 0;
+        for (const token of itemTokens) {
+            if (fileTokens.includes(token) || handle.name.toLowerCase().includes(token)) {
+                score++;
             }
-        } catch (iterErr) {
-            console.warn('Error scanning directory entries:', iterErr);
+        }
+        if (score > bestScore && score >= 2) {
+            bestScore = score;
+            bestHandle = handle;
+        }
+    }
+    
+    if (bestHandle) {
+        try {
+            const file = await bestHandle.getFile();
+            if (file && file.size > 0) return file;
+        } catch (e) {}
+    }
+    
+    // 5. Normalized text inclusion
+    const targetNorms = namesToTry.map(n => norm(n.replace(/\.pdf$/i, ''))).filter(Boolean);
+    for (const handle of allPdfHandles) {
+        const entryNorm = norm(handle.name.replace(/\.pdf$/i, ''));
+        for (const targetNorm of targetNorms) {
+            if (targetNorm && (entryNorm.includes(targetNorm) || targetNorm.includes(entryNorm))) {
+                try {
+                    const file = await handle.getFile();
+                    if (file && file.size > 0) return file;
+                } catch (e) {}
+            }
         }
     }
     
@@ -1298,6 +1623,91 @@ async function getPDFBlob(fileId, rawFileName, isInteractive = false, itemId = n
         }
     }
     
+    // Fallback: Retrieve from Google Drive Cloud API
+    const cloudUrl = getCloudApiUrl();
+    if (cloudUrl) {
+        try {
+            const queryParams = new URLSearchParams({
+                action: 'getFile',
+                format: 'base64',
+                fileId: fileId || '',
+                fileName: rawFileName || '',
+                itemId: itemId || '',
+                itemName: itemName || ''
+            });
+            const fetchUrl = cloudUrl + (cloudUrl.includes('?') ? '&' : '?') + queryParams.toString();
+            const resp = await fetch(fetchUrl);
+            if (resp.ok) {
+                const jsonRes = await resp.json();
+                if (jsonRes && jsonRes.status === 'ok') {
+                    if (jsonRes.base64) {
+                        const byteChars = atob(jsonRes.base64);
+                        const byteNums = new Array(byteChars.length);
+                        for (let i = 0; i < byteChars.length; i++) {
+                            byteNums[i] = byteChars.charCodeAt(i);
+                        }
+                        const byteArray = new Uint8Array(byteNums);
+                        return new Blob([byteArray], { type: 'application/pdf' });
+                    } else if (jsonRes.downloadUrl) {
+                        return {
+                            isCloudUrl: true,
+                            url: jsonRes.downloadUrl,
+                            fileName: jsonRes.fileName || rawFileName || itemName || 'document.pdf',
+                            previewUrl: jsonRes.previewUrl,
+                            size: jsonRes.size
+                        };
+                    }
+                }
+            }
+        } catch (cloudFetchErr) {
+            console.warn('Cloud PDF fetch notice in admin:', cloudFetchErr);
+        }
+    }
+    
+    return null;
+}
+
+// Recursively find data.json or data.xml in directory handle or any subdirectories
+async function findDataFileInDirectoryHandle(dirHandle, maxDepth = 4, currentDepth = 0) {
+    if (!dirHandle || currentDepth > maxDepth) return null;
+    
+    // 1. Direct check in current folder for data.json
+    try {
+        const jsonHandle = await dirHandle.getFileHandle('data.json');
+        const file = await jsonHandle.getFile();
+        const text = await file.text();
+        const data = JSON.parse(text);
+        if (data && (Array.isArray(data.materials) || Array.isArray(data.books))) {
+            return { type: 'json', data: data, handle: jsonHandle, dirHandle: dirHandle };
+        }
+    } catch (e) {}
+    
+    // 2. Direct check in current folder for data.xml
+    try {
+        const xmlHandle = await dirHandle.getFileHandle('data.xml');
+        const file = await xmlHandle.getFile();
+        const text = await file.text();
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(text, 'text/xml');
+        return { type: 'xml', xmlDoc: xmlDoc, handle: xmlHandle, dirHandle: dirHandle };
+    } catch (e) {}
+    
+    // 3. Scan subdirectories
+    try {
+        if (typeof dirHandle.values === 'function' || typeof dirHandle.entries === 'function') {
+            const iterator = dirHandle.values ? dirHandle.values() : dirHandle.entries();
+            for await (const entry of iterator) {
+                const handle = Array.isArray(entry) ? entry[1] : entry;
+                if (handle && handle.kind === 'directory') {
+                    const subRes = await findDataFileInDirectoryHandle(handle, maxDepth, currentDepth + 1);
+                    if (subRes) return subRes;
+                }
+            }
+        }
+    } catch (err) {
+        console.warn('Subdir scan warning:', err);
+    }
+    
     return null;
 }
 
@@ -1312,26 +1722,42 @@ async function linkLocalDataDirectory() {
             
             showLoading('جاري قراءة البيانات من المجلد المحلي...');
             
+            const foundData = await findDataFileInDirectoryHandle(dirHandle);
             let jsonData = null;
             let xmlDoc = null;
             
-            // 1. Try reading data.json
-            try {
-                const jsonHandle = await dirHandle.getFileHandle('data.json');
-                const jsonFile = await jsonHandle.getFile();
-                const jsonText = await jsonFile.text();
-                jsonData = JSON.parse(jsonText);
-            } catch (e) {
-                // 2. Fallback to data.xml
-                try {
-                    const xmlHandle = await dirHandle.getFileHandle('data.xml');
-                    const xmlFile = await xmlHandle.getFile();
-                    const xmlText = await xmlFile.text();
-                    const parser = new DOMParser();
-                    xmlDoc = parser.parseFromString(xmlText, 'text/xml');
-                } catch (err) {
+            if (foundData) {
+                if (foundData.type === 'json') jsonData = foundData.data;
+                if (foundData.type === 'xml') xmlDoc = foundData.xmlDoc;
+            } else {
+                // Auto-discover PDF files if no data.json or data.xml exists!
+                const pdfHandles = await collectAllPdfsFromDirectory(dirHandle);
+                if (pdfHandles.length > 0) {
+                    jsonData = {
+                        materials: pdfHandles.map(h => {
+                            const name = h.name.replace(/\.pdf$/i, '');
+                            const cleanName = name.replace(/^\d+[\s_\-]+/, '');
+                            const idMatch = h.name.match(/^\d+/);
+                            const id = idMatch ? idMatch[0] : Date.now().toString() + Math.floor(Math.random() * 1000);
+                            return {
+                                id: id,
+                                name: cleanName || name,
+                                school: '',
+                                teacher: '',
+                                grade: 'أخرى',
+                                sides: 'وجه واحد',
+                                price: '25',
+                                fileName: h.name,
+                                fileId: id,
+                                thumbnail: null,
+                                dateAdded: new Date().toISOString()
+                            };
+                        }),
+                        books: []
+                    };
+                } else {
                     hideLoading();
-                    alert('لم يتم العثور على ملف data.json أو data.xml داخل المجلد المختار.\nيرجى التأكد من استخراج ملفات النسخة الاحتياطية واختيار المجلد الصحيح.');
+                    alert('لم يتم العثور على ملفات PDF أو ملف data.json داخل المجلد المختار.\nيرجى التأكد من اختيار مجلد المواد والكتب الصحيح.');
                     return;
                 }
             }
@@ -1345,16 +1771,19 @@ async function linkLocalDataDirectory() {
             linkedDirectoryHandle = dirHandle;
             await saveDirectoryHandle(dirHandle);
             
-            // Import Metadata
+            // Import Metadata using updateItem (safe from ConstraintErrors)
+            let importedCount = 0;
             if (jsonData) {
                 if (Array.isArray(jsonData.materials)) {
                     for (const m of jsonData.materials) {
-                        await addItem(MATERIALS_STORE, m);
+                        await updateItem(MATERIALS_STORE, m);
+                        importedCount++;
                     }
                 }
                 if (Array.isArray(jsonData.books)) {
                     for (const b of jsonData.books) {
-                        await addItem(BOOKS_STORE, b);
+                        await updateItem(BOOKS_STORE, b);
+                        importedCount++;
                     }
                 }
             } else if (xmlDoc) {
@@ -1378,7 +1807,8 @@ async function linkLocalDataDirectory() {
                         thumbnail: getField('thumbnail') || null,
                         dateAdded: new Date().toISOString()
                     };
-                    await addItem(MATERIALS_STORE, material);
+                    await updateItem(MATERIALS_STORE, material);
+                    importedCount++;
                 }
                 
                 const bookNodes = xmlDoc.querySelectorAll('books > book');
@@ -1398,12 +1828,13 @@ async function linkLocalDataDirectory() {
                         thumbnail: getField('thumbnail') || null,
                         dateAdded: new Date().toISOString()
                     };
-                    await addItem(BOOKS_STORE, book);
+                    await updateItem(BOOKS_STORE, book);
+                    importedCount++;
                 }
             }
             
             hideLoading();
-            showNotification(`تم ربط المجلد "${dirHandle.name}" بنجاح بدون استهلاك ذاكرة المتصفح!`);
+            showNotification(`✅ تم ربط المجلد "${dirHandle.name}" بنجاح واستيراد ${importedCount} مادة وكتاب!`);
             await loadSavedItems();
             await updateStorageStatusBadge();
         } else {
@@ -1455,10 +1886,10 @@ async function linkLocalDataDirectory() {
                         const text = await jsonFile.text();
                         const data = JSON.parse(text);
                         if (Array.isArray(data.materials)) {
-                            for (const m of data.materials) await addItem(MATERIALS_STORE, m);
+                            for (const m of data.materials) await updateItem(MATERIALS_STORE, m);
                         }
                         if (Array.isArray(data.books)) {
-                            for (const b of data.books) await addItem(BOOKS_STORE, b);
+                            for (const b of data.books) await updateItem(BOOKS_STORE, b);
                         }
                     } else if (xmlFile) {
                         const text = await xmlFile.text();
@@ -1484,7 +1915,7 @@ async function linkLocalDataDirectory() {
                                 thumbnail: getField('thumbnail') || null,
                                 dateAdded: new Date().toISOString()
                             };
-                            await addItem(MATERIALS_STORE, material);
+                            await updateItem(MATERIALS_STORE, material);
                         }
                         
                         const bookNodes = xmlDoc.querySelectorAll('books > book');
@@ -1503,7 +1934,7 @@ async function linkLocalDataDirectory() {
                                 thumbnail: getField('thumbnail') || null,
                                 dateAdded: new Date().toISOString()
                             };
-                            await addItem(BOOKS_STORE, book);
+                            await updateItem(BOOKS_STORE, book);
                         }
                     }
                     
@@ -1882,7 +2313,7 @@ async function importDataFromZip() {
             
             if (Array.isArray(data.materials)) {
                 for (const m of data.materials) {
-                    await addItem(MATERIALS_STORE, m);
+                    await updateItem(MATERIALS_STORE, m);
                     if (m.fileId || m.fileName) {
                         const buf = await findAndExtractZipFile(zipContent, m.fileId || m.id, m.fileName || m.name);
                         if (buf) {
@@ -1893,7 +2324,7 @@ async function importDataFromZip() {
             }
             if (Array.isArray(data.books)) {
                 for (const b of data.books) {
-                    await addItem(BOOKS_STORE, b);
+                    await updateItem(BOOKS_STORE, b);
                     if (b.fileId || b.fileName) {
                         const buf = await findAndExtractZipFile(zipContent, b.fileId || b.id, b.fileName || b.name);
                         if (buf) {
@@ -1933,7 +2364,7 @@ async function importDataFromZip() {
                     await storeFileData(id, material.fileName, buf);
                 }
                 
-                await addItem(MATERIALS_STORE, material);
+                await updateItem(MATERIALS_STORE, material);
             }
             
             const bookNodes = xmlDoc.querySelectorAll('books > book');
